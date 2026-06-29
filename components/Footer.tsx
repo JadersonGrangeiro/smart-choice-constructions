@@ -51,19 +51,17 @@ export default function Footer() {
               <p style={{ fontSize: "0.875rem", color: "var(--gray-400)", lineHeight: 1.75, marginBottom: "1.5rem", maxWidth: "240px" }}>
                 America's most trusted platform connecting homeowners with verified local contractors.
               </p>
-              {/* Social */}
+              {/* Social — links added when profiles are live */}
               <div style={{ display: "flex", gap: "0.625rem" }}>
                 {[
-                  { href: COMPANY.social.facebook,  label: "f" },
-                  { href: COMPANY.social.instagram,  label: "ig" },
-                  { href: COMPANY.social.twitter,    label: "X" },
-                  { href: COMPANY.social.linkedin,   label: "in" },
+                  { label: "f",  title: "Facebook" },
+                  { label: "ig", title: "Instagram" },
+                  { label: "X",  title: "X / Twitter" },
+                  { label: "in", title: "LinkedIn" },
                 ].map(s => (
-                  <a key={s.label} href={s.href} aria-label={s.label}
-                    style={{ width: "34px", height: "34px", background: "rgba(255,255,255,0.07)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gray-400)", fontSize: "0.75rem", fontWeight: 700, textDecoration: "none", transition: "all 0.2s" }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--navy-mid)"; (e.currentTarget as HTMLAnchorElement).style.color = "white"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.07)"; (e.currentTarget as HTMLAnchorElement).style.color = "var(--gray-400)"; }}
-                  >{s.label}</a>
+                  <span key={s.label} title={`${s.title} — coming soon`}
+                    style={{ width: "34px", height: "34px", background: "rgba(255,255,255,0.04)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gray-600)", fontSize: "0.75rem", fontWeight: 700, cursor: "default", opacity: 0.5 }}
+                  >{s.label}</span>
                 ))}
               </div>
             </div>

@@ -60,7 +60,7 @@ export default function Home() {
     const obs = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && !animated.current) {
         animated.current = true;
-        [50000, 2400000, 4.8, 48].forEach((target, i) => {
+        [60, 48, 4.8, 0].forEach((target, i) => {
           const steps = 60;
           let current = 0;
           const timer = setInterval(() => {
@@ -75,13 +75,13 @@ export default function Home() {
     return () => obs.disconnect();
   }, []);
 
-  const fmt = (v: number, i: number) => i === 0 ? `${Math.floor(v/1000)}K+` : i === 1 ? `${(v/1000000).toFixed(1)}M+` : i === 2 ? v.toFixed(1) : `${Math.floor(v)}`;
+  const fmt = (v: number, i: number) => i === 0 ? `${Math.floor(v)}+` : i === 1 ? `${Math.floor(v)}` : i === 2 ? v.toFixed(1) : "Free";
   const popular = CATEGORIES.slice(0, 12);
 
   const featuredContractors = [
-    { id: "1", company: "ProBuild Solutions",        cat: "General Contractor", loc: "Austin, TX",    r: 4.9, n: 247, y: 18, init: "P", badge: "Top Rated",    svcs: ["Kitchen","Bathroom","Additions"] },
-    { id: "2", company: "Elite Roofing & Exteriors", cat: "Roofing",            loc: "Dallas, TX",    r: 4.8, n: 189, y: 14, init: "E", badge: "Featured",     svcs: ["Roof Install","Repair","Gutters"] },
-    { id: "3", company: "PowerUp Electrical",         cat: "Electrician",        loc: "Chicago, IL",   r: 4.9, n: 312, y: 22, init: "P", badge: "Most Reviews", svcs: ["Panel Upgrade","Wiring","EV Chargers"] },
+    { id: "f00ed9b9-ece2-4a19-9818-9663a600450a", company: "ProBuild Solutions",        cat: "General Contractor", loc: "Austin, TX",    r: 4.9, n: 247, y: 18, init: "P", badge: "Top Rated",    svcs: ["Kitchen","Bathroom","Additions"] },
+    { id: "a645986a-37bc-4ea4-8e3f-ae813dc064d1", company: "Elite Roofing & Exteriors", cat: "Roofing",            loc: "Dallas, TX",    r: 4.8, n: 189, y: 14, init: "E", badge: "Featured",     svcs: ["Roof Install","Repair","Gutters"] },
+    { id: "ef870dcc-b8ef-4299-bc59-3a19c6923242", company: "PowerUp Electrical",         cat: "Electrician",        loc: "Chicago, IL",   r: 4.9, n: 312, y: 22, init: "P", badge: "Most Reviews", svcs: ["Panel Upgrade","Wiring","EV Chargers"] },
   ];
 
   const topStates = US_STATES.filter(s =>
@@ -129,32 +129,41 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right panel */}
+            {/* Right panel — real construction photo */}
             <div className="animate-fade-in delay-200 hide-mobile" style={{ position: "relative", height: "460px" }}>
-              <div style={{ position: "absolute", top: 0, left: "5%", right: 0, background: "rgba(255,255,255,0.06)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "var(--radius-2xl)", height: "370px", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "1rem" }}>
-                <div style={{ fontSize: "4.5rem" }}>🏗️</div>
-                <div style={{ color: "white", fontWeight: 700, fontSize: "1.125rem", textAlign: "center" }}>Professional Contractors</div>
-                <div style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.875rem", textAlign: "center" }}>Ready to transform your home</div>
-                {/* Stats pills */}
-                <div style={{ position: "absolute", top: "1.25rem", right: "1.25rem", background: "rgba(199,25,26,0.25)", borderRadius: "var(--radius)", padding: "0.875rem 1.125rem", backdropFilter: "blur(8px)", border: "1px solid rgba(199,25,26,0.3)", textAlign: "center" }}>
-                  <div style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.6)" }}>Projects Completed</div>
-                  <div style={{ fontSize: "1.375rem", fontWeight: 800, color: "white" }}>2.4M+</div>
+              {/* Main photo */}
+              <div style={{ position: "absolute", top: 0, left: "5%", right: 0, borderRadius: "var(--radius-2xl)", height: "370px", overflow: "hidden", boxShadow: "0 32px 64px rgba(0,0,0,0.35)" }}>
+                <img
+                  src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=900&q=80"
+                  alt="Professional construction team at work"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
+                />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 50%, rgba(10,20,45,0.7) 100%)" }} />
+                {/* Overlay text */}
+                <div style={{ position: "absolute", bottom: "1.5rem", left: "1.5rem", right: "1.5rem" }}>
+                  <div style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "0.375rem" }}>Licensed & Insured</div>
+                  <div style={{ color: "white", fontWeight: 700, fontSize: "1.0625rem" }}>Professional contractors across 48 states</div>
                 </div>
-                <div style={{ position: "absolute", bottom: "1.25rem", left: "1.25rem", background: "rgba(255,255,255,0.1)", borderRadius: "var(--radius)", padding: "0.75rem 1rem", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}>
-                  <Stars rating={5} />
-                  <div style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.6)", marginTop: "3px" }}>4.8 avg rating</div>
+                {/* Rating pill */}
+                <div style={{ position: "absolute", top: "1.25rem", right: "1.25rem", background: "rgba(199,25,26,0.9)", borderRadius: "var(--radius)", padding: "0.625rem 1rem", backdropFilter: "blur(8px)", textAlign: "center" }}>
+                  <div style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Avg Rating</div>
+                  <div style={{ fontSize: "1.375rem", fontWeight: 800, color: "white", lineHeight: 1 }}>4.8 ★</div>
                 </div>
               </div>
 
               {/* Floating contractor card */}
-              <div className="animate-float" style={{ position: "absolute", bottom: "20px", left: 0, background: "white", borderRadius: "var(--radius-lg)", padding: "1rem 1.25rem", boxShadow: "var(--shadow-xl)", border: "1px solid var(--gray-100)", display: "flex", alignItems: "center", gap: "0.875rem", minWidth: "220px" }}>
-                <div style={{ width: "44px", height: "44px", background: "linear-gradient(135deg, var(--navy), #2d4ab8)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "1.125rem", flexShrink: 0 }}>T</div>
+              <div className="animate-float" style={{ position: "absolute", bottom: "20px", left: 0, background: "white", borderRadius: "var(--radius-lg)", padding: "1rem 1.25rem", boxShadow: "var(--shadow-xl)", border: "1px solid var(--gray-100)", display: "flex", alignItems: "center", gap: "0.875rem", minWidth: "240px" }}>
+                <img
+                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=88&h=88&fit=crop&q=80"
+                  alt="Marcus Rivera"
+                  style={{ width: "44px", height: "44px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--navy)" }}>Thomas Rivera</div>
-                  <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)" }}>General Contractor</div>
+                  <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--navy)" }}>Marcus Rivera</div>
+                  <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)" }}>General Contractor · Austin, TX</div>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "3px" }}>
                     <Stars rating={5} />
-                    <span style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>4.9 (247)</span>
+                    <span style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>4.9 (247 reviews)</span>
                   </div>
                 </div>
               </div>
@@ -296,7 +305,7 @@ export default function Home() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}>
               <Stars rating={5} />
               <span style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1.125rem" }}>4.8</span>
-              <span style={{ color: "var(--gray-400)" }}>from 2.4M+ projects</span>
+              <span style={{ color: "var(--gray-400)" }}>from verified reviews</span>
             </div>
           </Reveal>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(290px,1fr))", gap: "1.5rem" }}>

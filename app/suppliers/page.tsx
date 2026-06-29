@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SUPPLIER_CATEGORIES, SUPPLIER_CATEGORY_GROUPS } from "@/lib/supplier-data";
 import { US_STATES } from "@/lib/data";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ interface DbSupplier {
 }
 
 export default async function SuppliersPage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: featuredRaw } = await supabase
     .from("suppliers")
     .select("id, company_name, category, description, city, state_code, is_featured")
@@ -57,7 +57,7 @@ export default async function SuppliersPage() {
           <div style={{ display: "flex", gap: "2rem", justifyContent: "center", flexWrap: "wrap" }}>
             {[
               { value: `${SUPPLIER_CATEGORIES.length}+`, label: "Supplier Categories" },
-              { value: "All 50",                          label: "States Covered" },
+              { value: "48",                              label: "States Covered" },
               { value: "Free",                            label: "For Contractors & Homeowners" },
             ].map(s => (
               <div key={s.label} style={{ textAlign: "center" }}>

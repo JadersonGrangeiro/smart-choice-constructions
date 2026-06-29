@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import ContractorProfileClient from "@/components/ContractorProfileClient";
 import { CATEGORIES } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 async function getContractor(id: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: c, error } = await supabase
     .from("contractors")
@@ -31,7 +31,7 @@ async function getContractor(id: string) {
 }
 
 async function getRelated(id: string, category: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("contractors")
     .select("id, company_name, owner_first_name, owner_last_name, category, state_code, city, description, is_licensed, is_insured, is_background_checked, years_experience, response_time_hours")

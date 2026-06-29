@@ -16,7 +16,7 @@ export const translations = {
       viewAllServices: "View all 60+ services",
     },
     hero: {
-      badge: "50,000+ verified contractors nationwide",
+      badge: "Verified local contractors nationwide",
       title1: "Find the Right",
       title2: "Contractor",
       title3: "for Any Project",
@@ -67,10 +67,10 @@ export const translations = {
       "Cancel anytime. No long-term commitment required.",
     ],
     stats: [
-      { value: "50,000+", label: "Verified Contractors" },
-      { value: "2.4M+",   label: "Projects Completed" },
-      { value: "4.8",     label: "Average Rating" },
-      { value: "48",      label: "States Covered" },
+      { value: "60+",   label: "Service Categories" },
+      { value: "48",    label: "States Covered" },
+      { value: "4.8",   label: "Average Rating" },
+      { value: "Free",  label: "For Homeowners" },
     ],
     howItWorks: [
       { step: 1, title: "Describe Your Project",  desc: "Tell us what you need, from a simple repair to a full renovation. Our form captures every detail to match you with the right pros." },

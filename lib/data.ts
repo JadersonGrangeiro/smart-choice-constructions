@@ -20,10 +20,10 @@ export const COMPANY = {
 };
 
 export const STATS = [
-  { value: "50,000+", label: "Verified Contractors" },
-  { value: "2.4M+",  label: "Projects Completed" },
-  { value: "4.8",    label: "Average Rating" },
-  { value: "48",     label: "States Covered" },
+  { value: "60+",  label: "Service Categories" },
+  { value: "48",   label: "States Covered" },
+  { value: "4.8",  label: "Average Rating" },
+  { value: "Free", label: "For Homeowners" },
 ];
 
 export const CATEGORIES = [
@@ -304,9 +304,9 @@ export const FAQ_ITEMS = [
 ];
 
 export const BLOG_POSTS = [
-  { id: "1", title: "10 Signs You Need a New Roof Before Winter",             category: "Roofing",   excerpt: "Don't wait for a leak to tell you there's a problem. These warning signs can save you thousands in water damage repairs.", readTime: "5 min",  date: "June 15, 2025", author: "James Carter",    slug: "signs-you-need-new-roof",                    image: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80" },
+  { id: "1", title: "10 Signs You Need a New Roof Before Winter",             category: "Roofing",   excerpt: "Don't wait for a leak to tell you there's a problem. These warning signs can save you thousands in water damage repairs.", readTime: "5 min",  date: "June 15, 2025", author: "James Carter",    slug: "signs-you-need-new-roof",                    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80" },
   { id: "2", title: "How to Choose the Right Kitchen Remodeling Contractor",  category: "Kitchen",   excerpt: "Your kitchen is the heart of your home. Here's what to know before hiring someone to transform it.",                   readTime: "7 min",  date: "June 8, 2025",  author: "Maria Gonzalez",  slug: "choose-kitchen-remodeling-contractor",        image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80" },
-  { id: "3", title: "The Complete Guide to Home HVAC Systems",                 category: "HVAC",     excerpt: "Understanding your heating and cooling system helps you make smarter decisions about maintenance, repairs, and replacement.", readTime: "9 min", date: "May 29, 2025", author: "Robert Williams", slug: "complete-guide-hvac-systems",                  image: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=800&q=80" },
+  { id: "3", title: "The Complete Guide to Home HVAC Systems",                 category: "HVAC",     excerpt: "Understanding your heating and cooling system helps you make smarter decisions about maintenance, repairs, and replacement.", readTime: "9 min", date: "May 29, 2025", author: "Robert Williams", slug: "complete-guide-hvac-systems",                  image: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800&q=80" },
   { id: "4", title: "Bathroom Remodel on a Budget: What's Actually Worth It",  category: "Bathroom", excerpt: "A bathroom remodel doesn't have to break the bank. We break down where to splurge and where to save for maximum ROI.", readTime: "6 min",  date: "May 20, 2025",  author: "Sarah Thompson",  slug: "bathroom-remodel-budget",                     image: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&q=80" },
 ];
 
