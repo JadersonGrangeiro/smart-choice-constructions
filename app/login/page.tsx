@@ -1,18 +1,50 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/context";
 
 export default function LoginPage() {
   const { t } = useI18n();
-  const [tab, setTab] = useState<"homeowner"|"contractor">("homeowner");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") ?? "/";
 
-  const handleSubmit = () => {
+  const [tab, setTab]         = useState<"homeowner" | "contractor">("homeowner");
+  const [email, setEmail]     = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError]     = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
     if (!email || !password) { setError("Please fill in all fields."); return; }
     setError("");
+    setLoading(true);
+
+    const supabase = createClient();
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (authError) {
+      setError(authError.message === "Invalid login credentials"
+        ? "Incorrect email or password."
+        : authError.message);
+      setLoading(false);
+      return;
+    }
+
+    // Redirect based on role
+    const role = data.user?.user_metadata?.role ?? "customer";
+    if (redirect && redirect !== "/") {
+      router.push(redirect);
+    } else if (role === "admin") {
+      router.push("/admin");
+    } else if (role === "contractor") {
+      router.push("/dashboard/contractor");
+    } else {
+      router.push("/account");
+    }
+    router.refresh();
   };
 
   return (
@@ -32,8 +64,14 @@ export default function LoginPage() {
           <p style={{ color: "var(--gray-500)" }}>Sign in to your account</p>
         </div>
 
+        {searchParams.get("error") === "unauthorized" && (
+          <div style={{ background: "rgba(199,25,26,0.08)", border: "1px solid rgba(199,25,26,0.2)", borderRadius: "var(--radius-sm)", padding: "0.75rem 1rem", marginBottom: "1.25rem", fontSize: "0.875rem", color: "var(--red)", textAlign: "center" }}>
+            You don't have permission to access that page.
+          </div>
+        )}
+
         <div style={{ display: "flex", background: "var(--gray-100)", borderRadius: "var(--radius)", padding: "4px", marginBottom: "2rem" }}>
-          {(["homeowner","contractor"] as const).map(tp => (
+          {(["homeowner", "contractor"] as const).map(tp => (
             <button key={tp} onClick={() => setTab(tp)} style={{
               flex: 1, padding: "0.625rem", borderRadius: "calc(var(--radius) - 4px)",
               background: tab === tp ? "white" : "transparent",
@@ -55,16 +93,33 @@ export default function LoginPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "1.125rem" }}>
             <div>
               <label className="form-label">Email Address</label>
-              <input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} className="form-input" />
+              <input
+                type="email" placeholder="you@example.com" value={email}
+                onChange={e => setEmail(e.target.value)} className="form-input"
+                onKeyDown={e => e.key === "Enter" && handleSubmit()}
+              />
             </div>
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                 <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
-                <Link href="/forgot-password" style={{ fontSize: "0.8125rem", color: "var(--navy)", textDecoration: "none", fontWeight: 500 }}>Forgot password?</Link>
+                <Link href="/forgot-password" style={{ fontSize: "0.8125rem", color: "var(--navy)", textDecoration: "none", fontWeight: 500 }}>
+                  Forgot password?
+                </Link>
               </div>
-              <input type="password" placeholder="Your password" value={password} onChange={e => setPassword(e.target.value)} className="form-input" />
+              <input
+                type="password" placeholder="Your password" value={password}
+                onChange={e => setPassword(e.target.value)} className="form-input"
+                onKeyDown={e => e.key === "Enter" && handleSubmit()}
+              />
             </div>
-            <button className="btn-primary" onClick={handleSubmit} style={{ padding: "1rem" }}>{t.nav.signIn}</button>
+            <button
+              className="btn-primary"
+              onClick={handleSubmit}
+              disabled={loading}
+              style={{ padding: "1rem", opacity: loading ? 0.7 : 1 }}
+            >
+              {loading ? "Signing in…" : t.nav.signIn}
+            </button>
           </div>
           <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.9375rem", color: "var(--gray-500)" }}>
             Don't have an account?{" "}

@@ -6,12 +6,16 @@ import { CATEGORIES } from "@/lib/data";
 import { SUPPLIER_CATEGORIES, SUPPLIER_CATEGORY_GROUPS } from "@/lib/supplier-data";
 import { useI18n } from "@/lib/i18n/context";
 import LangSwitcher from "./LangSwitcher";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 export default function Header() {
   const [scrolled,      setScrolled]      = useState(false);
   const [mobileOpen,    setMobileOpen]    = useState(false);
   const [servicesOpen,  setServicesOpen]  = useState(false);
   const [suppliersOpen, setSuppliersOpen] = useState(false);
+  const [user, setUser]                  = useState<User | null>(null);
+  const [userRole, setUserRole]          = useState<string | null>(null);
   const { t } = useI18n();
   const svcTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -21,6 +25,20 @@ export default function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Auth state
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user ?? null);
+      setUserRole(data.user?.user_metadata?.role ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+      setUserRole(session?.user?.user_metadata?.role ?? null);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -173,12 +191,30 @@ export default function Header() {
           {/* Right CTAs */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginLeft: "auto" }} className="hide-mobile">
             <LangSwitcher scrolled={scrolled} />
-            <Link href="/login" style={{ fontSize: "0.875rem", fontWeight: 600, color: subColor, textDecoration: "none", padding: "0.5rem 0.75rem", transition: "color 0.2s" }}>
-              {t.nav.signIn}
-            </Link>
-            <Link href="/join" className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>
-              {t.nav.joinContractor}
-            </Link>
+            {user ? (
+              <>
+                <Link
+                  href={userRole === "admin" ? "/admin" : userRole === "contractor" ? "/dashboard/contractor" : "/account"}
+                  style={{ fontSize: "0.875rem", fontWeight: 600, color: subColor, textDecoration: "none", padding: "0.5rem 0.75rem" }}
+                >
+                  {userRole === "admin" ? "Admin Panel" : userRole === "contractor" ? "My Dashboard" : "My Account"}
+                </Link>
+                <form action="/api/auth/signout" method="post">
+                  <button type="submit" style={{ fontSize: "0.875rem", fontWeight: 600, color: subColor, background: "none", border: "none", cursor: "pointer", padding: "0.5rem 0.75rem", fontFamily: "inherit" }}>
+                    Sign Out
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
+                <Link href="/login" style={{ fontSize: "0.875rem", fontWeight: 600, color: subColor, textDecoration: "none", padding: "0.5rem 0.75rem", transition: "color 0.2s" }}>
+                  {t.nav.signIn}
+                </Link>
+                <Link href="/join" className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>
+                  {t.nav.joinContractor}
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile hamburger */}

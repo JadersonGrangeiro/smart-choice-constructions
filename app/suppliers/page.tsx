@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { SUPPLIER_CATEGORIES, MOCK_SUPPLIERS, SUPPLIER_CATEGORY_GROUPS, getFeaturedSuppliers } from "@/lib/supplier-data";
+import { SUPPLIER_CATEGORIES, SUPPLIER_CATEGORY_GROUPS } from "@/lib/supplier-data";
 import { US_STATES } from "@/lib/data";
-import { cityToSlug } from "@/lib/locations";
+import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Local Suppliers | Building Materials, Equipment & Professional Services",
@@ -13,16 +15,27 @@ export const metadata: Metadata = {
   },
 };
 
-function Stars({ rating }: { rating: number }) {
-  return (
-    <span style={{ color: "#f59e0b", letterSpacing: "-1px" }}>
-      {"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}
-    </span>
-  );
+interface DbSupplier {
+  id: string;
+  company_name: string;
+  category: string;
+  description: string | null;
+  city: string | null;
+  state_code: string | null;
+  is_featured: boolean;
 }
 
-export default function SuppliersPage() {
-  const featured = getFeaturedSuppliers(6);
+export default async function SuppliersPage() {
+  const supabase = await createClient();
+  const { data: featuredRaw } = await supabase
+    .from("suppliers")
+    .select("id, company_name, category, description, city, state_code, is_featured")
+    .eq("status", "active")
+    .eq("is_featured", true)
+    .order("company_name")
+    .limit(6);
+
+  const featured: DbSupplier[] = featuredRaw ?? [];
   const groups = Object.entries(SUPPLIER_CATEGORY_GROUPS) as [keyof typeof SUPPLIER_CATEGORY_GROUPS, string][];
 
   return (
@@ -41,12 +54,11 @@ export default function SuppliersPage() {
             Browse local building material suppliers, equipment rental companies, design professionals, and construction services — connected directly to the contractors who trust them.
           </p>
 
-          {/* Quick stats */}
           <div style={{ display: "flex", gap: "2rem", justifyContent: "center", flexWrap: "wrap" }}>
             {[
               { value: `${SUPPLIER_CATEGORIES.length}+`, label: "Supplier Categories" },
-              { value: "All 50",                           label: "States Covered" },
-              { value: "Free",                             label: "For Contractors & Homeowners" },
+              { value: "All 50",                          label: "States Covered" },
+              { value: "Free",                            label: "For Contractors & Homeowners" },
             ].map(s => (
               <div key={s.label} style={{ textAlign: "center" }}>
                 <div style={{ fontSize: "1.75rem", fontWeight: 900, color: "white", letterSpacing: "-0.03em" }}>{s.value}</div>
@@ -66,10 +78,10 @@ export default function SuppliersPage() {
             <section key={groupKey} style={{ marginBottom: "4rem" }}>
               <h2 style={{ fontSize: "1.375rem", fontWeight: 800, color: "var(--navy)", marginBottom: "0.5rem" }}>{groupLabel}</h2>
               <p style={{ color: "var(--gray-500)", marginBottom: "1.5rem", fontSize: "0.9375rem" }}>
-                {groupKey === "materials" && "Physical products, materials, and supplies for construction and renovation projects."}
-                {groupKey === "equipment" && "Tools, machinery, and equipment available for rent or purchase."}
+                {groupKey === "materials"    && "Physical products, materials, and supplies for construction and renovation projects."}
+                {groupKey === "equipment"    && "Tools, machinery, and equipment available for rent or purchase."}
                 {groupKey === "professional" && "Licensed professionals who support the design and management of projects."}
-                {groupKey === "services" && "Support services that complement construction and renovation work."}
+                {groupKey === "services"     && "Support services that complement construction and renovation work."}
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: "1rem" }}>
                 {cats.map(cat => (
@@ -99,39 +111,49 @@ export default function SuppliersPage() {
             <h2 style={{ fontSize: "1.375rem", fontWeight: 800, color: "var(--navy)" }}>Featured Local Suppliers</h2>
             <Link href="/find-suppliers" style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--navy)", textDecoration: "none" }}>Browse all →</Link>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))", gap: "1.25rem" }}>
-            {featured.map(supplier => {
-              const cat = SUPPLIER_CATEGORIES.find(c => c.id === supplier.categoryId);
-              return (
-                <Link key={supplier.id} href={`/suppliers/profile/${supplier.id}`}
-                  className="supplier-card"
-                  style={{ display: "flex", flexDirection: "column", padding: "1.5rem", background: "white", border: "1.5px solid var(--gray-150)", borderRadius: "var(--radius-lg)", textDecoration: "none", transition: "all 0.2s" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", marginBottom: "1rem" }}>
-                    <div style={{ width: "50px", height: "50px", background: `${cat?.color ?? "var(--navy)"}18`, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
-                      {cat?.icon ?? "🏢"}
+
+          {featured.length === 0 ? (
+            <div style={{ padding: "3rem", textAlign: "center", background: "var(--gray-50)", borderRadius: "var(--radius-lg)", border: "1px dashed var(--gray-200)" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>🏢</div>
+              <div style={{ fontWeight: 600, color: "var(--gray-600)", marginBottom: "0.375rem" }}>No featured suppliers yet</div>
+              <p style={{ fontSize: "0.875rem", color: "var(--gray-400)" }}>Featured suppliers are added by the admin panel.</p>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))", gap: "1.25rem" }}>
+              {featured.map(supplier => {
+                const cat = SUPPLIER_CATEGORIES.find(c => c.name === supplier.category);
+                const location = [supplier.city, supplier.state_code].filter(Boolean).join(", ");
+                return (
+                  <Link key={supplier.id} href={`/suppliers/profile/${supplier.id}`}
+                    className="supplier-card"
+                    style={{ display: "flex", flexDirection: "column", padding: "1.5rem", background: "white", border: "1.5px solid var(--gray-150)", borderRadius: "var(--radius-lg)", textDecoration: "none", transition: "all 0.2s" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", marginBottom: "1rem" }}>
+                      <div style={{ width: "50px", height: "50px", background: `${cat?.color ?? "var(--navy)"}18`, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
+                        {cat?.icon ?? "🏢"}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.2rem" }}>{supplier.company_name}</div>
+                        <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)" }}>
+                          {cat?.name ?? supplier.category}{location ? ` · ${location}` : ""}
+                        </div>
+                      </div>
+                      <span style={{ background: "rgba(199,25,26,0.08)", color: "var(--red)", padding: "0.2rem 0.5rem", borderRadius: "999px", fontSize: "0.6875rem", fontWeight: 700, flexShrink: 0 }}>
+                        Featured
+                      </span>
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.2rem" }}>{supplier.name}</div>
-                      <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)" }}>{cat?.name} · {supplier.location}</div>
-                    </div>
-                    {supplier.featured && (
-                      <span style={{ background: "rgba(199,25,26,0.08)", color: "var(--red)", padding: "0.2rem 0.5rem", borderRadius: "999px", fontSize: "0.6875rem", fontWeight: 700, flexShrink: 0 }}>Featured</span>
+                    {supplier.description && (
+                      <p style={{ color: "var(--gray-600)", fontSize: "0.875rem", lineHeight: 1.65, marginBottom: "1rem", flex: 1 }}>
+                        {supplier.description.length > 120 ? supplier.description.slice(0, 120) + "…" : supplier.description}
+                      </p>
                     )}
-                  </div>
-                  <p style={{ color: "var(--gray-600)", fontSize: "0.875rem", lineHeight: 1.65, marginBottom: "1rem", flex: 1 }}>
-                    {supplier.description.slice(0, 120)}…
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                      <Stars rating={supplier.rating} />
-                      <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>({supplier.reviews})</span>
+                    <div style={{ textAlign: "right" }}>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--navy)" }}>View Profile →</span>
                     </div>
-                    <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--navy)" }}>View Profile →</span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* Browse by state */}
@@ -173,9 +195,9 @@ export default function SuppliersPage() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {[
-              { icon: "🤝", title: "Mutual referrals",     desc: "Suppliers refer homeowners to contractors in their network." },
-              { icon: "⭐", title: "Verified relationships",desc: "Confirmed partnerships earn trust badges on both profiles." },
-              { icon: "📍", title: "Local ecosystem",       desc: "Keep business local — support suppliers in your community." },
+              { icon: "🤝", title: "Mutual referrals",      desc: "Suppliers refer homeowners to contractors in their network." },
+              { icon: "⭐", title: "Verified relationships", desc: "Confirmed partnerships earn trust badges on both profiles." },
+              { icon: "📍", title: "Local ecosystem",        desc: "Keep business local — support suppliers in your community." },
             ].map(item => (
               <div key={item.title} style={{ display: "flex", gap: "0.875rem", padding: "1rem", background: "rgba(255,255,255,0.06)", borderRadius: "var(--radius)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <span style={{ fontSize: "1.25rem", flexShrink: 0 }}>{item.icon}</span>

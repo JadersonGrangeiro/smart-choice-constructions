@@ -1,10 +1,31 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
-  const [sent, setSent] = useState(false);
-  const [email, setEmail] = useState("");
+  const [sent, setSent]     = useState(false);
+  const [email, setEmail]   = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]   = useState("");
+
+  const handleSubmit = async () => {
+    if (!email) { setError("Please enter your email address."); return; }
+    setError("");
+    setLoading(true);
+
+    const supabase = createClient();
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/api/auth/callback?next=/reset-password`,
+    });
+
+    setLoading(false);
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+    setSent(true);
+  };
 
   return (
     <div style={{ paddingTop: "76px", minHeight: "100vh", background: "var(--gray-50)", display: "flex", alignItems: "center" }}>
@@ -23,22 +44,26 @@ export default function ForgotPasswordPage() {
 
         {!sent ? (
           <div className="card" style={{ padding: "2rem" }}>
+            {error && (
+              <div style={{ background: "rgba(199,25,26,0.08)", border: "1px solid rgba(199,25,26,0.2)", borderRadius: "var(--radius-sm)", padding: "0.75rem 1rem", marginBottom: "1.25rem", fontSize: "0.875rem", color: "var(--red)" }}>
+                {error}
+              </div>
+            )}
             <div style={{ marginBottom: "1.25rem" }}>
               <label className="form-label">Email Address</label>
               <input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="form-input"
+                type="email" placeholder="you@example.com" value={email}
+                onChange={e => setEmail(e.target.value)} className="form-input"
+                onKeyDown={e => e.key === "Enter" && handleSubmit()}
               />
             </div>
             <button
               className="btn-red"
-              style={{ width: "100%", padding: "1rem" }}
-              onClick={() => email && setSent(true)}
+              style={{ width: "100%", padding: "1rem", opacity: loading ? 0.7 : 1 }}
+              onClick={handleSubmit}
+              disabled={loading}
             >
-              Send Reset Link
+              {loading ? "Sending…" : "Send Reset Link"}
             </button>
             <div style={{ textAlign: "center", marginTop: "1.25rem" }}>
               <Link href="/login" style={{ fontSize: "0.9rem", color: "var(--navy)", textDecoration: "none", fontWeight: 500 }}>
@@ -49,7 +74,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <div className="card" style={{ padding: "2rem", textAlign: "center" }}>
             <div style={{ background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: "var(--radius)", padding: "1.25rem", marginBottom: "1.5rem", fontSize: "0.9375rem", color: "#15803d" }}>
-              Reset link sent. It expires in 30 minutes.
+              Reset link sent. It expires in 60 minutes.
             </div>
             <p style={{ fontSize: "0.875rem", color: "var(--gray-500)", marginBottom: "1.5rem", lineHeight: 1.65 }}>
               Didn't receive the email? Check your spam folder, or try a different address.

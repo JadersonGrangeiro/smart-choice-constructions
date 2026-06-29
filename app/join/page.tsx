@@ -12,7 +12,7 @@ interface Step2Data { company: string; category: string; state: string; city: st
 interface Step3Data { description: string; website: string; facebook: string; instagram: string; linkedin: string; }
 interface Step4Data { monday: boolean; tuesday: boolean; wednesday: boolean; thursday: boolean; friday: boolean; saturday: boolean; sunday: boolean; openTime: string; closeTime: string; emergency: boolean; }
 interface Step5Data { serviceRadius: string; additionalStates: string[]; additionalCities: string; }
-interface Step6Data { cardNumber: string; expiry: string; cvc: string; nameOnCard: string; }
+// Step6Data removed — payment handled by Stripe Checkout redirect
 
 const TOTAL_STEPS = 6;
 
@@ -518,39 +518,75 @@ function Step5({ onNext, onBack }: { onNext: (d: Step5Data) => void; onBack: () 
   );
 }
 
-// ─── Step 6: Payment ──────────────────────────────────────────────────────────
-function Step6({ onSubmit, onBack }: { onSubmit: (d: Step6Data) => void; onBack: () => void }) {
-  const [d, setD] = useState<Step6Data>({ cardNumber: "", expiry: "", cvc: "", nameOnCard: "" });
-  const [errors, setErrors] = useState<Partial<Step6Data>>({});
+// ─── Step 6: Payment via Stripe Checkout ─────────────────────────────────────
+interface Step6Props {
+  onBack: () => void;
+  allData: {
+    step1: Step1Data | null;
+    step2: Step2Data | null;
+    step3Data: Step3Data | null;
+    step4Data: Step4Data | null;
+    step5Data: Step5Data | null;
+  };
+}
+
+function Step6({ onBack, allData }: Step6Props) {
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState("");
 
-  const set = (k: keyof Step6Data) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setD(prev => ({ ...prev, [k]: e.target.value }));
+  const handleCheckout = async () => {
+    const { step1, step2, step3Data, step4Data, step5Data } = allData;
+    if (!step1 || !step2) { setError("Missing registration data. Please go back."); return; }
 
-  // Format card number with spaces
-  const handleCardNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 16);
-    const formatted = raw.replace(/(.{4})/g, "$1 ").trim();
-    setD(prev => ({ ...prev, cardNumber: formatted }));
-  };
-
-  // Format expiry MM/YY
-  const handleExpiry = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, "").slice(0, 4);
-    if (val.length >= 3) val = val.slice(0,2) + "/" + val.slice(2);
-    setD(prev => ({ ...prev, expiry: val }));
-  };
-
-  const submit = () => {
-    const errs: Partial<Step6Data> = {};
-    errs.nameOnCard = validate.required(d.nameOnCard, "Name on card") ?? undefined;
-    errs.cardNumber = validate.cardNumber(d.cardNumber.replace(/\s/g, "")) ?? undefined;
-    errs.expiry     = validate.cardExpiry(d.expiry) ?? undefined;
-    errs.cvc        = validate.cardCvc(d.cvc) ?? undefined;
-    const clean = Object.fromEntries(Object.entries(errs).filter(([,v]) => v)) as Partial<Step6Data>;
-    if (Object.keys(clean).length > 0) { setErrors(clean); return; }
     setLoading(true);
-    setTimeout(() => { setLoading(false); onSubmit(d); }, 1500);
+    setError("");
+
+    try {
+      const res = await fetch("/api/contractors/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName:        step1.firstName,
+          lastName:         step1.lastName,
+          email:            step1.email,
+          phone:            step1.phone,
+          password:         step1.password,
+          company:          step2.company,
+          category:         step2.category,
+          state:            step2.state,
+          city:             step2.city,
+          years:            step2.years,
+          license:          step2.license,
+          insurance:        step2.insurance,
+          description:      step3Data?.description,
+          website:          step3Data?.website,
+          facebook:         step3Data?.facebook,
+          instagram:        step3Data?.instagram,
+          linkedin:         step3Data?.linkedin,
+          workingDays:      step4Data ? Object.entries(step4Data).filter(([k, v]) => ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].includes(k) && v).map(([k]) => k) : [],
+          openTime:         step4Data?.openTime,
+          closeTime:        step4Data?.closeTime,
+          emergency:        step4Data?.emergency,
+          serviceRadius:    step5Data?.serviceRadius,
+          additionalStates: step5Data?.additionalStates,
+          additionalCities: step5Data?.additionalCities,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Registration failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Redirect to Stripe Checkout
+      window.location.href = data.checkoutUrl;
+    } catch {
+      setError("Network error. Please check your connection and try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -559,6 +595,12 @@ function Step6({ onSubmit, onBack }: { onSubmit: (d: Step6Data) => void; onBack:
       <p style={{ color: "var(--gray-500)", marginBottom: "2rem", fontSize: "0.9375rem" }}>
         Your first month is billed at <strong style={{ color: "var(--navy)" }}>${COMPANY.pricing.firstMonth.toFixed(2)}</strong>. Then ${COMPANY.pricing.monthly.toFixed(2)}/month. Cancel anytime.
       </p>
+
+      {error && (
+        <div style={{ background: "rgba(199,25,26,0.08)", border: "1px solid rgba(199,25,26,0.2)", borderRadius: "var(--radius-sm)", padding: "0.875rem 1rem", marginBottom: "1.5rem", fontSize: "0.875rem", color: "var(--red)" }}>
+          {error}
+        </div>
+      )}
 
       {/* Plan summary */}
       <div style={{ background: "linear-gradient(135deg, var(--navy), #2a3d8f)", borderRadius: "var(--radius-lg)", padding: "1.5rem 2rem", marginBottom: "2rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
@@ -579,53 +621,44 @@ function Step6({ onSubmit, onBack }: { onSubmit: (d: Step6Data) => void; onBack:
         </div>
       </div>
 
-      {/* Payment form */}
-      <div style={{ background: "var(--gray-50)", borderRadius: "var(--radius)", padding: "1.5rem", marginBottom: "1.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.25rem" }}>
-          <span style={{ fontSize: "1.125rem" }}>🔒</span>
-          <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-600)" }}>Secure payment — encrypted with Stripe</span>
+      {/* Stripe redirect notice */}
+      <div style={{ background: "var(--gray-50)", border: "1.5px solid var(--gray-200)", borderRadius: "var(--radius)", padding: "1.5rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
+          <span style={{ fontSize: "1.5rem" }}>🔒</span>
+          <div>
+            <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "0.9375rem" }}>Secure payment via Stripe</div>
+            <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>You'll be redirected to Stripe's secure checkout page</div>
+          </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: "0.375rem" }}>
             {["VISA","MC","AMEX","DISC"].map(brand => (
               <div key={brand} style={{ padding: "2px 6px", background: "white", border: "1px solid var(--gray-200)", borderRadius: "4px", fontSize: "0.6875rem", fontWeight: 700, color: "var(--gray-500)" }}>{brand}</div>
             ))}
           </div>
         </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <FormField label="Name on Card" required error={errors.nameOnCard}>
-            <StyledInput placeholder="John Smith" value={d.nameOnCard} onChange={set("nameOnCard")} hasError={!!errors.nameOnCard} />
-          </FormField>
-          <FormField label="Card Number" required error={errors.cardNumber}>
-            <StyledInput placeholder="1234 5678 9012 3456" value={d.cardNumber} onChange={handleCardNumber} hasError={!!errors.cardNumber} inputMode="numeric" maxLength={19} />
-          </FormField>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-            <FormField label="Expiry Date" required error={errors.expiry}>
-              <StyledInput placeholder="MM/YY" value={d.expiry} onChange={handleExpiry} hasError={!!errors.expiry} inputMode="numeric" maxLength={5} />
-            </FormField>
-            <FormField label="CVC" required error={errors.cvc} hint="3 or 4 digits on the back of your card.">
-              <StyledInput placeholder="123" value={d.cvc} onChange={set("cvc")} hasError={!!errors.cvc} inputMode="numeric" maxLength={4} />
-            </FormField>
-          </div>
-        </div>
+        <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.875rem", color: "var(--gray-600)", lineHeight: 1.8 }}>
+          <li>Your card details are never stored on our servers</li>
+          <li>Payment is processed by Stripe — the same system trusted by Amazon and Google</li>
+          <li>Cancel anytime from your dashboard — no fees</li>
+        </ul>
       </div>
 
       <div style={{ display: "flex", gap: "1rem" }}>
         <button className="btn-secondary" onClick={onBack} style={{ flex: 1 }} disabled={loading}>← Back</button>
-        <button className="btn-red" onClick={submit} style={{ flex: 2, padding: "1rem", opacity: loading ? 0.8 : 1 }} disabled={loading}>
+        <button className="btn-red" onClick={handleCheckout} style={{ flex: 2, padding: "1rem", opacity: loading ? 0.8 : 1 }} disabled={loading}>
           {loading ? (
             <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}>
                 <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3"/>
                 <path d="M21 12a9 9 0 00-9-9" strokeLinecap="round"/>
               </svg>
-              Processing…
+              Creating your account…
             </span>
-          ) : `Subscribe — $${COMPANY.pricing.firstMonth.toFixed(2)} First Month`}
+          ) : `Continue to Payment — $${COMPANY.pricing.firstMonth.toFixed(2)}`}
         </button>
       </div>
 
       <p style={{ fontSize: "0.8125rem", color: "var(--gray-400)", textAlign: "center", marginTop: "1rem" }}>
-        By subscribing you authorize Smart Choice Constructions LLC to charge your card ${COMPANY.pricing.firstMonth.toFixed(2)} today, then ${COMPANY.pricing.monthly.toFixed(2)}/month until cancelled.
+        By continuing you'll be redirected to Stripe to complete your payment of ${COMPANY.pricing.firstMonth.toFixed(2)} today, then ${COMPANY.pricing.monthly.toFixed(2)}/month until cancelled.
       </p>
     </div>
   );
@@ -679,13 +712,15 @@ export default function JoinPage() {
   // Collect data from each step
   const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
   const [step2Data, setStep2Data] = useState<Step2Data | null>(null);
+  const [step3Data, setStep3Data] = useState<Step3Data | null>(null);
+  const [step4Data, setStep4Data] = useState<Step4Data | null>(null);
+  const [step5Data, setStep5Data] = useState<Step5Data | null>(null);
 
   const handleStep1 = (d: Step1Data) => { setStep1Data(d); setFN(d.firstName); setStep(2); window.scrollTo(0,0); };
   const handleStep2 = (d: Step2Data) => { setStep2Data(d); setStep(3); window.scrollTo(0,0); };
-  const handleStep3 = (d: Step3Data) => { setStep(4); window.scrollTo(0,0); };
-  const handleStep4 = (d: Step4Data) => { setStep(5); window.scrollTo(0,0); };
-  const handleStep5 = (d: Step5Data) => { setStep(6); window.scrollTo(0,0); };
-  const handleStep6 = (d: Step6Data) => { setDone(true); window.scrollTo(0,0); };
+  const handleStep3 = (d: Step3Data) => { setStep3Data(d); setStep(4); window.scrollTo(0,0); };
+  const handleStep4 = (d: Step4Data) => { setStep4Data(d); setStep(5); window.scrollTo(0,0); };
+  const handleStep5 = (d: Step5Data) => { setStep5Data(d); setStep(6); window.scrollTo(0,0); };
 
   if (done) {
     return (
@@ -734,7 +769,12 @@ export default function JoinPage() {
         {step === 3 && <Step3 onNext={handleStep3} onBack={() => { setStep(2); window.scrollTo(0,0); }} />}
         {step === 4 && <Step4 onNext={handleStep4} onBack={() => { setStep(3); window.scrollTo(0,0); }} />}
         {step === 5 && <Step5 onNext={handleStep5} onBack={() => { setStep(4); window.scrollTo(0,0); }} />}
-        {step === 6 && <Step6 onSubmit={handleStep6} onBack={() => { setStep(5); window.scrollTo(0,0); }} />}
+        {step === 6 && (
+          <Step6
+            onBack={() => { setStep(5); window.scrollTo(0,0); }}
+            allData={{ step1: step1Data, step2: step2Data, step3Data, step4Data, step5Data }}
+          />
+        )}
 
         <p style={{ textAlign: "center", fontSize: "0.8125rem", color: "var(--gray-400)", marginTop: "1.5rem" }}>
           Already have an account? <Link href="/login" style={{ color: "var(--navy)", fontWeight: 600, textDecoration: "none" }}>Sign in</Link>

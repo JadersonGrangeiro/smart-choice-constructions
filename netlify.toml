@@ -1,77 +1,35 @@
 [build]
   command   = "npm run build"
-  publish   = "out"
+  publish   = ".next"
 
-# ── Immutable cache for hashed static assets ─────────────────────────────────
+# Next.js SSR plugin — required after removing output: "export"
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ── Security headers ──────────────────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options                = "DENY"
+    X-Content-Type-Options         = "nosniff"
+    X-XSS-Protection               = "1; mode=block"
+    Referrer-Policy                = "strict-origin-when-cross-origin"
+    Permissions-Policy             = "camera=(), microphone=(), geolocation=(), payment=(self)"
+    Strict-Transport-Security      = "max-age=31536000; includeSubDomains; preload"
+    Content-Security-Policy        = "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://*.supabase.co; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'"
+
+# ── Static asset cache ────────────────────────────────────────────────────────
 [[headers]]
   for = "/_next/static/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-    X-Content-Type-Options = "nosniff"
-
-[[headers]]
-  for = "/*.js"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/*.css"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# ── Media assets — 30-day cache ──────────────────────────────────────────────
-[[headers]]
-  for = "/*.png"
-  [headers.values]
-    Cache-Control = "public, max-age=2592000"
-
-[[headers]]
-  for = "/*.svg"
-  [headers.values]
-    Cache-Control = "public, max-age=2592000"
-
-[[headers]]
-  for = "/*.jpg"
-  [headers.values]
-    Cache-Control = "public, max-age=2592000"
-
-[[headers]]
-  for = "/*.webp"
-  [headers.values]
-    Cache-Control = "public, max-age=2592000"
 
 [[headers]]
   for = "/*.woff2"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# ── Security headers for all pages ───────────────────────────────────────────
-[[headers]]
-  for = "/*"
-  [headers.values]
-    # Prevent clickjacking
-    X-Frame-Options = "DENY"
-    # Prevent MIME-type sniffing
-    X-Content-Type-Options = "nosniff"
-    # XSS protection (legacy but harmless)
-    X-XSS-Protection = "1; mode=block"
-    # Strict referrer policy
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    # Restrict browser APIs
-    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(self)"
-    # Force HTTPS for 1 year (including subdomains)
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
-    # Basic CSP — tighten further after integrating Google Analytics
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com https://www.google-analytics.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'"
-
-# ── Admin route protection via HTTP Basic Auth ────────────────────────────────
-# Uncomment and set password after deployment:
-# [[headers]]
-#   for = "/admin/*"
-#   [headers.values]
-#     Basic-Auth = "admin:REPLACE_WITH_STRONG_PASSWORD"
-
-# ── Redirects ────────────────────────────────────────────────────────────────
+# ── Redirects ─────────────────────────────────────────────────────────────────
 [[redirects]]
   from   = "/home"
   to     = "/"
@@ -96,9 +54,3 @@
   from   = "/register"
   to     = "/join"
   status = 301
-
-# ── SPA fallback (not-found → custom 404) ────────────────────────────────────
-[[redirects]]
-  from   = "/*"
-  to     = "/404.html"
-  status = 404

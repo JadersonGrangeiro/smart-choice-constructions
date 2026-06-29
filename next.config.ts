@@ -1,38 +1,45 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",
-  trailingSlash: true,
+  // SSR mode — required for API routes, auth, and Stripe webhooks
+  // output: "export" was removed to enable server-side features
 
-  // Images: unoptimized required for static export
   images: {
-    unoptimized: true,
     formats: ["image/avif", "image/webp"],
+    remotePatterns: [
+      // Supabase Storage
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+      // External contractor photos
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
   },
 
-  // TypeScript — strict, errors fail the build
   typescript: { ignoreBuildErrors: false },
 
-  // Production optimisations
   compiler: {
-    // Remove all console.* calls in production builds
-    removeConsole: process.env.NODE_ENV === "production"
-      ? { exclude: ["error"] }  // keep console.error for production monitoring
-      : false,
+    removeConsole:
+      process.env.NODE_ENV === "production" ? { exclude: ["error"] } : false,
   },
 
-  // Compress static assets
   compress: true,
-
-  // React strict mode catches bugs early
   reactStrictMode: true,
-
-  // Security: hide the X-Powered-By header
   poweredByHeader: false,
 
-  // Experimental: faster builds
-  experimental: {
-    // Turbopack is used in dev; standard webpack in production build
+  // Required for Stripe webhook raw body parsing
+  async headers() {
+    return [
+      {
+        source: "/api/stripe/webhook",
+        headers: [{ key: "Content-Type", value: "application/json" }],
+      },
+    ];
   },
 };
 
