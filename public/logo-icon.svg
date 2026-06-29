@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 170" fill="none">
+  <!--
+    Smart Choice Constructions LLC — Official Logo Mark
+    Reconstructed faithfully from logo.png (3840x2160 source)
+    Colors: Navy #162E5E | Red #C7191A
+    Stroke: 8.76 units (5.15% of height)
+  -->
+
+  <!-- Left roof slope: apex (84.3, 4.4) → left end (22.2, 52.9) -->
+  <line
+    x1="84.3" y1="4.4"
+    x2="22.2" y2="52.9"
+    stroke="#162E5E"
+    stroke-width="8.76"
+    stroke-linecap="round"
+  />
+
+  <!-- Right roof slope: apex (84.3, 4.4) → right slope end (144.6, 52.9) -->
+  <line
+    x1="84.3" y1="4.4"
+    x2="144.6" y2="52.9"
+    stroke="#162E5E"
+    stroke-width="8.76"
+    stroke-linecap="round"
+  />
+
+  <!-- Horizontal roof extension: (144.6, 52.9) → (287.1, 52.9) -->
+  <line
+    x1="144.6" y1="52.9"
+    x2="287.1" y2="52.9"
+    stroke="#162E5E"
+    stroke-width="8.76"
+    stroke-linecap="round"
+  />
+
+  <!-- Chimney: vertical rect from top to roof line -->
+  <rect
+    x="117.9" y="4.4"
+    width="13.7" height="48.5"
+    fill="#162E5E"
+    rx="1"
+  />
+
+  <!-- Window row 1, square 1 -->
+  <rect
+    x="71.3" y="34.6"
+    width="8.4" height="8.2"
+    fill="#C7191A"
+    rx="0.8"
+  />
+  <!-- Window row 1, square 2 -->
+  <rect
+    x="88.6" y="34.6"
+    width="8.4" height="8.2"
+    fill="#C7191A"
+    rx="0.8"
+  />
+  <!-- Window row 2, square 1 -->
+  <rect
+    x="71.3" y="52.4"
+    width="8.4" height="8.1"
+    fill="#C7191A"
+    rx="0.8"
+  />
+  <!-- Window row 2, square 2 -->
+  <rect
+    x="88.6" y="52.4"
+    width="8.4" height="8.1"
+    fill="#C7191A"
+    rx="0.8"
+  />
+</svg>

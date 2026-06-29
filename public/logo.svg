@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 260" fill="none">
+  <!-- House roof -->
+  <polyline points="60,160 180,60 300,160" stroke="#1B2A6B" stroke-width="16" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+  <!-- Chimney -->
+  <rect x="218" y="72" width="28" height="48" fill="#1B2A6B" rx="2"/>
+  <!-- Horizontal base line -->
+  <line x1="180" y1="160" x2="460" y2="160" stroke="#1B2A6B" stroke-width="16" stroke-linecap="round"/>
+  <!-- Window grid 2x2 -->
+  <rect x="148" y="110" width="20" height="20" rx="2" fill="#C8102E"/>
+  <rect x="173" y="110" width="20" height="20" rx="2" fill="#C8102E"/>
+  <rect x="148" y="135" width="20" height="20" rx="2" fill="#C8102E"/>
+  <rect x="173" y="135" width="20" height="20" rx="2" fill="#C8102E"/>
+  <!-- SMART CHOICE text -->
+  <text x="60" y="205" font-family="'Arial Black', 'Arial', sans-serif" font-weight="900" font-size="52" fill="#111111" letter-spacing="1">SMART CHOICE</text>
+  <!-- Divider line -->
+  <line x1="60" y1="213" x2="460" y2="213" stroke="#111111" stroke-width="2.5"/>
+  <!-- CONSTRUCTIONS text -->
+  <text x="60" y="238" font-family="'Arial', sans-serif" font-weight="700" font-size="26" fill="#1B2A6B" letter-spacing="8">CONSTRUCTIONS</text>
+  <!-- Tagline -->
+  <text x="60" y="258" font-family="'Georgia', serif" font-style="italic" font-size="16" fill="#1B2A6B" letter-spacing="1">Simple, Clear, Complete.</text>
+</svg>

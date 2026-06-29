@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 170" fill="none">
+  <!-- Left roof slope -->
+  <line x1="84.3" y1="4.4" x2="22.2" y2="52.9" stroke="white" stroke-width="8.76" stroke-linecap="round"/>
+  <!-- Right roof slope -->
+  <line x1="84.3" y1="4.4" x2="144.6" y2="52.9" stroke="white" stroke-width="8.76" stroke-linecap="round"/>
+  <!-- Horizontal roof extension -->
+  <line x1="144.6" y1="52.9" x2="287.1" y2="52.9" stroke="white" stroke-width="8.76" stroke-linecap="round"/>
+  <!-- Chimney -->
+  <rect x="117.9" y="4.4" width="13.7" height="48.5" fill="white" rx="1"/>
+  <!-- Windows — keep red even on white version (brand element) -->
+  <rect x="71.3" y="34.6" width="8.4" height="8.2" fill="#C7191A" rx="0.8"/>
+  <rect x="88.6" y="34.6" width="8.4" height="8.2" fill="#C7191A" rx="0.8"/>
+  <rect x="71.3" y="52.4" width="8.4" height="8.1" fill="#C7191A" rx="0.8"/>
+  <rect x="88.6" y="52.4" width="8.4" height="8.1" fill="#C7191A" rx="0.8"/>
+</svg>
