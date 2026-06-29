@@ -415,7 +415,7 @@ export async function sendPaymentFailedEmail(contractor: { email: string; update
 **Company:** Smart Choice Constructions LLC  
 **EIN:** 35-2894127  
 **Address:** 2222 W Grand River Ave Ste A, Okemos, MI 48864  
-**Email:** jadersoneua@gmail.com  
+**Email:** hello@smartchoiceconstructions.com  
 **Website:** https://smartchoiceconstructions.com
 
 ---

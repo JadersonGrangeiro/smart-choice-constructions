@@ -143,6 +143,9 @@ export default function ContractorDashboard() {
             </div>
           </div>
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+            <Link href="/dashboard/messages" className="btn-secondary" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>
+              💬 Messages
+            </Link>
             {contractor.status === "active" && (
               <Link href={`/contractors/${contractor.id}`} className="btn-secondary" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>
                 View Public Profile →

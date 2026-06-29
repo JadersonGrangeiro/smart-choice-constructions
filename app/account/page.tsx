@@ -1,51 +1,125 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { MOCK_CONTRACTORS, CATEGORIES } from "@/lib/data";
+import { createClient } from "@/lib/supabase/client";
 
 type Tab = "overview" | "favorites" | "history" | "reviews" | "settings";
 
-const MOCK_ACCOUNT = {
-  name:    "Jennifer Morrison",
-  email:   "jennifer.m@email.com",
-  zip:     "78701",
-  city:    "Austin, TX",
-  joined:  "June 2025",
-  phone:   "+1 (512) 555-0190",
-};
+interface Profile {
+  full_name: string;
+  email: string;
+  phone?: string;
+  city?: string;
+  state_code?: string;
+  created_at: string;
+}
 
-const FAVORITES = MOCK_CONTRACTORS.slice(0, 3);
+interface Favorite {
+  id: string;
+  contractors: {
+    id: string;
+    company_name: string;
+    owner_first_name: string;
+    owner_last_name: string;
+    category: string;
+    city: string;
+    state_code: string;
+    ranking_score: number;
+  };
+}
 
-const HISTORY = [
-  { id: "h1", contractor: "ProBuild Solutions",  service: "Kitchen Remodel",    date: "Jun 25, 2025", status: "quote_requested", contractorId: "1" },
-  { id: "h2", contractor: "Elite Roofing",        service: "Roof Inspection",    date: "Jun 20, 2025", status: "contacted",       contractorId: "2" },
-  { id: "h3", contractor: "PowerUp Electrical",   service: "Panel Upgrade",      date: "Jun 15, 2025", status: "reviewed",        contractorId: "3" },
-  { id: "h4", contractor: "BathPro Renovations",  service: "Master Bath",        date: "Jun 10, 2025", status: "completed",       contractorId: "5" },
-];
+interface QuoteRequest {
+  id: string;
+  service_type: string;
+  status: string;
+  created_at: string;
+  city?: string;
+  state_code?: string;
+  contractors: { id: string; company_name: string } | null;
+}
 
-const MY_REVIEWS = [
-  { contractorId: "3", contractor: "PowerUp Electrical", rating: 5, date: "Jun 17, 2025", project: "Panel Upgrade",  text: "David's team was incredibly professional. Showed up on time, finished ahead of schedule, and the workmanship is excellent." },
-  { contractorId: "5", contractor: "BathPro Renovations",rating: 5, date: "Jun 12, 2025", project: "Master Bath",    text: "Jennifer and her crew transformed our dated bathroom into something we're genuinely proud of. Highly recommend." },
-];
+interface Review {
+  id: string;
+  rating: number;
+  body: string;
+  project_type?: string;
+  created_at: string;
+  contractors: { id: string; company_name: string } | null;
+}
 
 const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }> = {
-  quote_requested: { label: "Quote Requested", color: "#6366f1", bg: "rgba(99,102,241,0.08)" },
-  contacted:       { label: "Contacted",       color: "#0891b2", bg: "rgba(8,145,178,0.08)" },
-  reviewed:        { label: "Reviewed",        color: "#16a34a", bg: "rgba(22,163,74,0.08)" },
-  completed:       { label: "Completed",       color: "var(--gray-500)", bg: "var(--gray-100)" },
+  pending:   { label: "Pending",          color: "#6366f1", bg: "rgba(99,102,241,0.08)" },
+  viewed:    { label: "Viewed",           color: "#0891b2", bg: "rgba(8,145,178,0.08)" },
+  responded: { label: "Responded",        color: "#d97706", bg: "rgba(245,158,11,0.08)" },
+  completed: { label: "Completed",        color: "#16a34a", bg: "rgba(22,163,74,0.08)" },
+  declined:  { label: "Declined",         color: "var(--gray-500)", bg: "var(--gray-100)" },
 };
 
 function Stars({ rating }: { rating: number }) {
   return (
     <div style={{ display: "flex", gap: "1px" }}>
-      {[1,2,3,4,5].map(i => <span key={i} style={{ color: i <= rating ? "#f59e0b" : "var(--gray-200)", fontSize: "1rem" }}>★</span>)}
+      {[1,2,3,4,5].map(i => (
+        <span key={i} style={{ color: i <= rating ? "#f59e0b" : "var(--gray-200)", fontSize: "1rem" }}>★</span>
+      ))}
     </div>
   );
 }
 
 export default function AccountPage() {
-  const [tab, setTab] = useState<Tab>("overview");
-  const [favorites, setFavorites] = useState(FAVORITES.map(c => c.id));
+  const [tab, setTab]           = useState<Tab>("overview");
+  const [profile, setProfile]   = useState<Profile | null>(null);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [quotes, setQuotes]     = useState<QuoteRequest[]>([]);
+  const [reviews, setReviews]   = useState<Review[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [saveMsg, setSaveMsg]   = useState("");
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+
+      const [profileRes, favRes, quoteRes, reviewRes] = await Promise.all([
+        supabase.from("profiles").select("full_name,email,phone,city,state_code,created_at").eq("id", user.id).single(),
+        supabase.from("favorites").select("id,contractors(id,company_name,owner_first_name,owner_last_name,category,city,state_code,ranking_score)").eq("homeowner_id", user.id),
+        supabase.from("quote_requests").select("id,service_type,status,created_at,city,state_code,contractors(id,company_name)").eq("homeowner_id", user.id).order("created_at", { ascending: false }),
+        supabase.from("reviews").select("id,rating,body,project_type,created_at,contractors(id,company_name)").eq("homeowner_id", user.id).order("created_at", { ascending: false }),
+      ]);
+
+      if (profileRes.data) {
+        setProfile(profileRes.data);
+        setEditName(profileRes.data.full_name ?? "");
+        setEditPhone(profileRes.data.phone ?? "");
+      }
+      setFavorites((favRes.data as unknown as Favorite[]) ?? []);
+      setQuotes((quoteRes.data as unknown as QuoteRequest[]) ?? []);
+      setReviews((reviewRes.data as unknown as Review[]) ?? []);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  async function handleRemoveFavorite(favId: string, contractorId: string) {
+    setFavorites(prev => prev.filter(f => f.id !== favId));
+    await supabase.from("favorites").delete().eq("id", favId);
+  }
+
+  async function handleSaveSettings(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveMsg("");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("profiles").update({ full_name: editName, phone: editPhone }).eq("id", user.id);
+    setProfile(prev => prev ? { ...prev, full_name: editName, phone: editPhone } : prev);
+    setSaveMsg("Changes saved!");
+    setSaving(false);
+    setTimeout(() => setSaveMsg(""), 3000);
+  }
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "overview",  label: "Overview",  icon: "🏠" },
@@ -55,6 +129,33 @@ export default function AccountPage() {
     { key: "settings",  label: "Settings",  icon: "⚙️" },
   ];
 
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    : "";
+  const location = [profile?.city, profile?.state_code].filter(Boolean).join(", ");
+
+  if (loading) {
+    return (
+      <div style={{ paddingTop: "76px", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center", color: "var(--gray-400)" }}>
+          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⏳</div>
+          Loading your account...
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div style={{ paddingTop: "76px", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ marginBottom: "1rem", color: "var(--gray-500)" }}>Please sign in to view your account.</p>
+          <Link href="/login" className="btn-red">Sign In</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ paddingTop: "76px", minHeight: "100vh", background: "var(--gray-50)" }}>
       {/* Header */}
@@ -62,11 +163,13 @@ export default function AccountPage() {
         <div className="container">
           <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", marginBottom: "1.75rem" }}>
             <div style={{ width: "56px", height: "56px", background: "rgba(255,255,255,0.12)", border: "2px solid rgba(255,255,255,0.2)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: "1.5rem" }}>
-              {MOCK_ACCOUNT.name.charAt(0)}
+              {(profile.full_name ?? profile.email).charAt(0).toUpperCase()}
             </div>
             <div>
-              <h1 style={{ color: "white", fontWeight: 800, fontSize: "1.375rem" }}>{MOCK_ACCOUNT.name}</h1>
-              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.875rem" }}>{MOCK_ACCOUNT.city} · Member since {MOCK_ACCOUNT.joined}</p>
+              <h1 style={{ color: "white", fontWeight: 800, fontSize: "1.375rem" }}>{profile.full_name || "My Account"}</h1>
+              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.875rem" }}>
+                {location ? `${location} · ` : ""}Member since {memberSince}
+              </p>
             </div>
           </div>
           <div style={{ display: "flex", gap: "0.125rem", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
@@ -93,36 +196,37 @@ export default function AccountPage() {
         {tab === "overview" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.5rem" }}>
             {[
-              { icon: "❤️", label: "Saved Contractors", value: favorites.length, tab: "favorites" as Tab },
-              { icon: "📋", label: "Quote Requests",    value: HISTORY.length,   tab: "history" as Tab },
-              { icon: "⭐", label: "Reviews Written",   value: MY_REVIEWS.length,tab: "reviews" as Tab },
+              { icon: "❤️", label: "Saved Contractors", value: favorites.length,  tab: "favorites" as Tab },
+              { icon: "📋", label: "Quote Requests",    value: quotes.length,     tab: "history"   as Tab },
+              { icon: "⭐", label: "Reviews Written",   value: reviews.length,    tab: "reviews"   as Tab },
             ].map(card => (
-              <button key={card.label} onClick={() => setTab(card.tab)} className="card" style={{ padding: "1.5rem", textAlign: "left", cursor: "pointer", border: "none", fontFamily: "inherit", transition: "box-shadow 0.2s", background: "white" }}>
+              <button key={card.label} onClick={() => setTab(card.tab)} className="card" style={{ padding: "1.5rem", textAlign: "left", cursor: "pointer", border: "none", fontFamily: "inherit", background: "white" }}>
                 <div style={{ fontSize: "1.75rem", marginBottom: "0.75rem" }}>{card.icon}</div>
                 <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--navy)", letterSpacing: "-0.03em" }}>{card.value}</div>
                 <div style={{ fontSize: "0.9375rem", color: "var(--gray-500)", fontWeight: 500 }}>{card.label}</div>
               </button>
             ))}
 
-            {/* Recent activity */}
-            <div className="card" style={{ padding: "1.75rem", gridColumn: "1/-1" }}>
-              <h2 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "1.25rem", fontSize: "1.0625rem" }}>Recent Activity</h2>
-              {HISTORY.slice(0, 3).map(item => {
-                const st = STATUS_STYLE[item.status];
-                return (
-                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "0.875rem 0", borderBottom: "1px solid var(--gray-100)" }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: "var(--navy)", fontSize: "0.9375rem" }}>{item.contractor}</div>
-                      <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>{item.service} · {item.date}</div>
+            {quotes.length > 0 && (
+              <div className="card" style={{ padding: "1.75rem", gridColumn: "1/-1" }}>
+                <h2 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "1.25rem", fontSize: "1.0625rem" }}>Recent Activity</h2>
+                {quotes.slice(0, 3).map((item, i) => {
+                  const st = STATUS_STYLE[item.status] ?? STATUS_STYLE.pending;
+                  return (
+                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "0.875rem 0", borderBottom: i < Math.min(quotes.length, 3) - 1 ? "1px solid var(--gray-100)" : "none" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, color: "var(--navy)", fontSize: "0.9375rem" }}>{item.contractors?.company_name ?? "Unknown"}</div>
+                        <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>
+                          {item.service_type} · {new Date(item.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </div>
+                      </div>
+                      <span style={{ background: st.bg, color: st.color, padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}>{st.label}</span>
                     </div>
-                    <span style={{ background: st.bg, color: st.color, padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}>{st.label}</span>
-                    <Link href={`/contractors/${item.contractorId}`} style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--navy)", textDecoration: "none" }}>View →</Link>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
 
-            {/* Find more */}
             <div style={{ background: "var(--navy)", borderRadius: "var(--radius-xl)", padding: "2rem", gridColumn: "1/-1", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
               <div>
                 <h3 style={{ fontWeight: 700, color: "white", fontSize: "1.125rem", marginBottom: "0.375rem" }}>Looking for a contractor?</h3>
@@ -137,9 +241,9 @@ export default function AccountPage() {
         {tab === "favorites" && (
           <div>
             <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1.25rem", marginBottom: "1.5rem" }}>
-              Saved Contractors <span style={{ color: "var(--red)" }}>({MOCK_CONTRACTORS.filter(c => favorites.includes(c.id)).length})</span>
+              Saved Contractors <span style={{ color: "var(--red)" }}>({favorites.length})</span>
             </h2>
-            {MOCK_CONTRACTORS.filter(c => favorites.includes(c.id)).length === 0 ? (
+            {favorites.length === 0 ? (
               <div className="card" style={{ padding: "3rem", textAlign: "center" }}>
                 <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>❤️</div>
                 <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "0.75rem" }}>No saved contractors yet</h3>
@@ -148,34 +252,26 @@ export default function AccountPage() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                {MOCK_CONTRACTORS.filter(c => favorites.includes(c.id)).map(c => (
-                  <div key={c.id} className="card" style={{ padding: "1.5rem", display: "flex", alignItems: "center", gap: "1.25rem" }}>
-                    <div style={{ width: "52px", height: "52px", background: "var(--navy)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: "1.25rem", flexShrink: 0 }}>
-                      {c.name.charAt(0)}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{c.company}</div>
-                      <div style={{ fontSize: "0.875rem", color: "var(--gray-500)" }}>{c.category} · {c.location}</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.375rem" }}>
-                        {[1,2,3,4,5].map(i => <span key={i} style={{ color: i <= Math.round(c.rating) ? "#f59e0b" : "var(--gray-200)", fontSize: "0.875rem" }}>★</span>)}
-                        <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>({c.reviews})</span>
+                {favorites.map(fav => {
+                  const c = fav.contractors;
+                  return (
+                    <div key={fav.id} className="card" style={{ padding: "1.5rem", display: "flex", alignItems: "center", gap: "1.25rem" }}>
+                      <div style={{ width: "52px", height: "52px", background: "var(--navy)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: "1.25rem", flexShrink: 0 }}>
+                        {c.company_name.charAt(0)}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{c.company_name}</div>
+                        <div style={{ fontSize: "0.875rem", color: "var(--gray-500)" }}>{c.category} · {c.city}, {c.state_code}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: "0.625rem", flexShrink: 0 }}>
+                        <Link href={`/contractors/${c.id}`} className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>View Profile</Link>
+                        <button onClick={() => handleRemoveFavorite(fav.id, c.id)}
+                          style={{ padding: "0.625rem", background: "rgba(199,25,26,0.08)", color: "var(--red)", border: "1px solid rgba(199,25,26,0.15)", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: "1rem" }}
+                          aria-label="Remove from favorites">❤️</button>
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: "0.625rem", flexShrink: 0 }}>
-                      <Link href={`/request-quote?contractor=${c.id}`} className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>
-                        Get Quote
-                      </Link>
-                      <Link href={`/contractors/${c.id}`} className="btn-secondary" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>
-                        View
-                      </Link>
-                      <button onClick={() => setFavorites(prev => prev.filter(id => id !== c.id))}
-                        style={{ padding: "0.625rem", background: "rgba(199,25,26,0.08)", color: "var(--red)", border: "1px solid rgba(199,25,26,0.15)", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: "1rem" }}
-                        aria-label="Remove from favorites">
-                        ❤️
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -184,35 +280,37 @@ export default function AccountPage() {
         {/* ── HISTORY ── */}
         {tab === "history" && (
           <div>
-            <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1.25rem", marginBottom: "1.5rem" }}>Contact History</h2>
-            <div className="card" style={{ overflow: "hidden" }}>
-              {HISTORY.map((item, i) => {
-                const st = STATUS_STYLE[item.status];
-                return (
-                  <div key={item.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: "1rem", padding: "1.25rem 1.5rem", borderBottom: i < HISTORY.length - 1 ? "1px solid var(--gray-50)" : "none", alignItems: "center" }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "0.9375rem", marginBottom: "0.25rem" }}>{item.contractor}</div>
-                      <div style={{ fontSize: "0.875rem", color: "var(--gray-500)" }}>{item.service}</div>
-                      <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)", marginTop: "0.25rem" }}>{item.date}</div>
+            <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1.25rem", marginBottom: "1.5rem" }}>Quote History</h2>
+            {quotes.length === 0 ? (
+              <div className="card" style={{ padding: "3rem", textAlign: "center" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📋</div>
+                <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "0.75rem" }}>No quote requests yet</h3>
+                <p style={{ color: "var(--gray-500)", marginBottom: "1.5rem" }}>Request quotes from local contractors to get started.</p>
+                <Link href="/find-contractors" className="btn-red">Find Contractors</Link>
+              </div>
+            ) : (
+              <div className="card" style={{ overflow: "hidden" }}>
+                {quotes.map((item, i) => {
+                  const st = STATUS_STYLE[item.status] ?? STATUS_STYLE.pending;
+                  return (
+                    <div key={item.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "1rem", padding: "1.25rem 1.5rem", borderBottom: i < quotes.length - 1 ? "1px solid var(--gray-50)" : "none", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "0.9375rem", marginBottom: "0.25rem" }}>{item.contractors?.company_name ?? "Unknown"}</div>
+                        <div style={{ fontSize: "0.875rem", color: "var(--gray-500)" }}>{item.service_type}</div>
+                        <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)", marginTop: "0.25rem" }}>
+                          {new Date(item.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {item.city ? ` · ${item.city}, ${item.state_code}` : ""}
+                        </div>
+                      </div>
+                      <span style={{ background: st.bg, color: st.color, padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}>{st.label}</span>
+                      {item.contractors?.id && (
+                        <Link href={`/contractors/${item.contractors.id}`} className="btn-secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.8125rem" }}>View Profile</Link>
+                      )}
                     </div>
-                    <span style={{ background: st.bg, color: st.color, padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}>
-                      {st.label}
-                    </span>
-                    <Link href={`/contractors/${item.contractorId}`} className="btn-secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.8125rem" }}>
-                      View Profile
-                    </Link>
-                    {item.status !== "reviewed" && item.status !== "quote_requested" && (
-                      <Link href={`/contractors/${item.contractorId}#reviews`} className="btn-red" style={{ padding: "0.5rem 1rem", fontSize: "0.8125rem" }}>
-                        Leave Review
-                      </Link>
-                    )}
-                    {(item.status === "reviewed" || item.status === "quote_requested") && (
-                      <div style={{ width: "100px" }} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -220,65 +318,67 @@ export default function AccountPage() {
         {tab === "reviews" && (
           <div>
             <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1.25rem", marginBottom: "1.5rem" }}>
-              Reviews You've Written <span style={{ color: "var(--red)" }}>({MY_REVIEWS.length})</span>
+              Reviews You've Written <span style={{ color: "var(--red)" }}>({reviews.length})</span>
             </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {MY_REVIEWS.map((r, i) => (
-                <div key={i} className="card" style={{ padding: "1.75rem" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", marginBottom: "0.875rem", flexWrap: "wrap" }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem" }}>{r.contractor}</div>
-                      <div style={{ fontSize: "0.875rem", color: "var(--gray-400)" }}>{r.project} · {r.date}</div>
+            {reviews.length === 0 ? (
+              <div className="card" style={{ padding: "3rem", textAlign: "center" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⭐</div>
+                <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "0.75rem" }}>No reviews yet</h3>
+                <p style={{ color: "var(--gray-500)" }}>After working with a contractor, leave a review to help other homeowners.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {reviews.map(r => (
+                  <div key={r.id} className="card" style={{ padding: "1.75rem" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", marginBottom: "0.875rem", flexWrap: "wrap" }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem" }}>{r.contractors?.company_name}</div>
+                        <div style={{ fontSize: "0.875rem", color: "var(--gray-400)" }}>
+                          {r.project_type ? `${r.project_type} · ` : ""}
+                          {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <Stars rating={r.rating} />
+                        {r.contractors?.id && (
+                          <Link href={`/contractors/${r.contractors.id}`} style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--navy)", textDecoration: "none" }}>View profile →</Link>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                      <Stars rating={r.rating} />
-                      <Link href={`/contractors/${r.contractorId}`} style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--navy)", textDecoration: "none" }}>View profile →</Link>
-                    </div>
+                    <p style={{ color: "var(--gray-600)", lineHeight: 1.75, fontSize: "0.9375rem" }}>{r.body}</p>
                   </div>
-                  <p style={{ color: "var(--gray-600)", lineHeight: 1.75, fontSize: "0.9375rem" }}>{r.text}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* ── SETTINGS ── */}
         {tab === "settings" && (
-          <div className="card" style={{ padding: "2rem", maxWidth: "640px" }}>
+          <form onSubmit={handleSaveSettings} className="card" style={{ padding: "2rem", maxWidth: "640px" }}>
             <h2 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "2rem", fontSize: "1.25rem" }}>Account Settings</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-              {[
-                ["Full Name",   MOCK_ACCOUNT.name,   "text"],
-                ["Email",       MOCK_ACCOUNT.email,  "email"],
-                ["Phone",       MOCK_ACCOUNT.phone,  "tel"],
-                ["ZIP Code",    MOCK_ACCOUNT.zip,    "text"],
-              ].map(([label, value, type]) => (
-                <div key={label}>
-                  <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.5rem" }}>{label}</label>
-                  <input type={type} defaultValue={value} className="form-input" />
-                </div>
-              ))}
               <div>
-                <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.5rem" }}>Email Notifications</label>
-                {[
-                  "Contractor responds to my quote request",
-                  "New contractors available in my area",
-                  "Platform updates and announcements",
-                ].map(label => (
-                  <label key={label} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem 0", cursor: "pointer" }}>
-                    <input type="checkbox" defaultChecked style={{ accentColor: "var(--navy)", width: "16px", height: "16px" }} />
-                    <span style={{ fontSize: "0.9375rem", color: "var(--gray-700)" }}>{label}</span>
-                  </label>
-                ))}
+                <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.5rem" }}>Full Name</label>
+                <input type="text" className="form-input" value={editName} onChange={e => setEditName(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.5rem" }}>Email</label>
+                <input type="email" className="form-input" value={profile.email} disabled style={{ opacity: 0.6, cursor: "not-allowed" }} />
+                <p style={{ fontSize: "0.8125rem", color: "var(--gray-400)", marginTop: "0.375rem" }}>Email cannot be changed here. Contact support if needed.</p>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.5rem" }}>Phone</label>
+                <input type="tel" className="form-input" value={editPhone} onChange={e => setEditPhone(e.target.value)} />
               </div>
             </div>
-            <div style={{ display: "flex", gap: "1rem", marginTop: "1.75rem", paddingTop: "1.5rem", borderTop: "1px solid var(--gray-100)" }}>
-              <button className="btn-red" style={{ padding: "0.875rem 2rem" }}>Save Changes</button>
-              <button style={{ padding: "0.875rem 1.5rem", background: "rgba(199,25,26,0.06)", color: "var(--red)", border: "1.5px solid rgba(199,25,26,0.2)", borderRadius: "var(--radius)", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", fontFamily: "inherit" }}>
-                Delete Account
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "1.75rem", paddingTop: "1.5rem", borderTop: "1px solid var(--gray-100)" }}>
+              <button type="submit" className="btn-red" style={{ padding: "0.875rem 2rem" }} disabled={saving}>
+                {saving ? "Saving…" : "Save Changes"}
               </button>
+              {saveMsg && <span style={{ color: "#16a34a", fontWeight: 600, fontSize: "0.9rem" }}>{saveMsg}</span>}
             </div>
-          </div>
+          </form>
         )}
       </div>
     </div>

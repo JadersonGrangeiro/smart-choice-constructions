@@ -37,7 +37,7 @@ const SECTIONS = [
   },
   {
     title: "Contact",
-    body: "Questions about our use of cookies? Email us at jadersoneua@gmail.com.",
+    body: "Questions about our use of cookies? Email us at hello@smartchoiceconstructions.com.",
   },
 ];
 

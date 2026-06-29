@@ -1,22 +1,31 @@
 import Link from "next/link";
-import { supplierSchema, supplierBreadcrumbSchema } from "@/lib/seo";
-import { MOCK_SUPPLIERS, SUPPLIER_CATEGORIES, getRelatedSuppliers, getSupplierCategoryById } from "@/lib/supplier-data";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { createAdminClient } from "@/lib/supabase/server";
+import { SUPPLIER_CATEGORIES, getSupplierCategoryById } from "@/lib/supplier-data";
 
-export async function generateStaticParams() {
-  return MOCK_SUPPLIERS.map(s => ({ id: s.id }));
+export const dynamic = "force-dynamic";
+
+async function getSupplier(id: string) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select("*")
+    .eq("id", id)
+    .eq("status", "active")
+    .single();
+  if (error || !data) return null;
+  return data;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const s = MOCK_SUPPLIERS.find(x => x.id === id);
+  const s = await getSupplier(id);
   if (!s) return {};
-  const cat = getSupplierCategoryById(s.categoryId);
+  const cat = SUPPLIER_CATEGORIES.find(c => c.id === s.category || c.name === s.category);
   return {
-    title: `${s.name} | ${cat?.name} in ${s.location}`,
-    description: `${s.description.slice(0, 160)}`,
-    openGraph: { title: `${s.name} — ${cat?.name}`, description: s.description.slice(0, 160) },
+    title: `${s.company_name} | ${cat?.name ?? s.category} Supplier`,
+    description: s.description?.slice(0, 160) ?? `${s.company_name} is a local ${s.category} supplier serving ${s.city ?? ""}, ${s.state_code ?? ""}.`,
   };
 }
 
@@ -32,47 +41,33 @@ function Stars({ rating, size = 16 }: { rating: number; size?: number }) {
   );
 }
 
-// Mock reviews for suppliers
-const SUPPLIER_REVIEWS = [
-  { name: "Robert C.",  role: "Licensed Contractor", rating: 5, text: "Incredibly knowledgeable staff and the pricing is competitive. Same-day delivery when I need it. My go-to for every project." },
-  { name: "Maria G.",  role: "General Contractor",   rating: 5, text: "The account manager actually knows what they're talking about. Net-30 terms made cash flow much easier on a big job." },
-  { name: "James W.",  role: "Homeowner",            rating: 4, text: "Helped me source everything for a kitchen renovation. Wide selection and they pulled my order before I arrived." },
-];
-
 export default async function SupplierProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const s = MOCK_SUPPLIERS.find(x => x.id === id);
+  const s = await getSupplier(id);
   if (!s) notFound();
-  const cat     = getSupplierCategoryById(s.categoryId);
-  const related = getRelatedSuppliers(s.id, s.categoryId);
-  const stateObj = { slug: s.stateCode.toLowerCase() };
+
+  const cat = SUPPLIER_CATEGORIES.find(c => c.id === s.category || c.name === s.category);
+  const products: string[] = s.products ?? [];
+  const brands: string[] = s.brands ?? [];
+  const rating = s.rating ?? 0;
+  const reviewCount = s.review_count ?? 0;
+  const yearsInBusiness = s.years_in_business ?? 0;
+  const location = [s.city, s.state_code].filter(Boolean).join(", ");
 
   const faq = [
-    { q: "Do you offer contractor accounts or trade pricing?", a: `Many suppliers offer dedicated trade pricing for licensed contractors. Contact ${s.name} directly to inquire about contractor accounts, net terms, and volume pricing.` },
-    { q: "What is your delivery range?",                       a: `Delivery availability varies. Contact ${s.name} at ${s.phone} to confirm delivery to your job site.` },
-    { q: "Can I view samples or products in person?",          a: `${s.name} welcomes visitors during business hours: ${s.hours}. We recommend calling ahead for showroom appointments.` },
-    { q: "What brands do you carry?",                          a: `Current brands include: ${s.brands.join(", ")}. Product availability may vary — contact us for current stock.` },
+    { q: "Do you offer contractor accounts or trade pricing?", a: `Many suppliers offer dedicated trade pricing for licensed contractors. Contact ${s.company_name} directly to inquire about contractor accounts, net terms, and volume pricing.` },
+    { q: "What is your delivery range?", a: `Delivery availability varies. Contact ${s.company_name}${s.phone ? ` at ${s.phone}` : ""} to confirm delivery to your job site.` },
+    { q: "Can I view products in person?", a: `${s.company_name} welcomes visitors${s.hours ? ` during business hours: ${s.hours}` : ""}. We recommend calling ahead for showroom appointments.` },
+    ...(brands.length > 0 ? [{ q: "What brands do you carry?", a: `Current brands include: ${brands.join(", ")}. Product availability may vary — contact us for current stock.` }] : []),
   ];
-
-  const schema     = supplierSchema(s, cat?.name ?? "");
-  const breadcrumb = supplierBreadcrumbSchema(s.categoryId, cat?.name ?? "", undefined, undefined, undefined, undefined, s.name);
 
   return (
     <div style={{ paddingTop: "76px" }}>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
-      />
       {/* Cover */}
       <div style={{ height: "220px", background: `linear-gradient(155deg, ${cat?.color ?? "var(--navy-dark)"}, var(--navy))`, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8rem", opacity: 0.1 }}>
           {cat?.icon ?? "🏢"}
         </div>
-        {/* Breadcrumb */}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "1rem 0", background: "linear-gradient(transparent, rgba(0,0,0,0.4))" }}>
           <div className="container">
             <nav aria-label="Breadcrumb" style={{ display: "flex", gap: "0.5rem", fontSize: "0.8125rem", color: "rgba(255,255,255,0.55)", flexWrap: "wrap" }}>
@@ -80,9 +75,8 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
               <span>/</span>
               <Link href="/suppliers" style={{ color: "inherit", textDecoration: "none" }}>Local Suppliers</Link>
               <span>/</span>
-              <Link href={`/suppliers/categories/${s.categoryId}`} style={{ color: "inherit", textDecoration: "none" }}>{cat?.name}</Link>
-              <span>/</span>
-              <span style={{ color: "rgba(255,255,255,0.85)" }}>{s.name}</span>
+              {cat && <><Link href={`/suppliers/categories/${cat.id}`} style={{ color: "inherit", textDecoration: "none" }}>{cat.name}</Link><span>/</span></>}
+              <span style={{ color: "rgba(255,255,255,0.85)" }}>{s.company_name}</span>
             </nav>
           </div>
         </div>
@@ -91,26 +85,29 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
       {/* Sticky header */}
       <div style={{ background: "white", borderBottom: "1px solid var(--gray-100)", position: "sticky", top: "72px", zIndex: 50 }}>
         <div className="container" style={{ padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: "1.5rem", flexWrap: "wrap" }}>
-          {/* Logo avatar */}
           <div style={{ width: "72px", height: "72px", background: `${cat?.color ?? "var(--navy)"}18`, border: `2px solid ${cat?.color ?? "var(--navy)"}22`, borderRadius: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", flexShrink: 0, marginTop: "-36px" }}>
-            {cat?.icon ?? "🏢"}
+            {s.logo_url ? <img src={s.logo_url} alt={s.company_name} style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: "16px" }} /> : (cat?.icon ?? "🏢")}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.375rem" }}>
-              <h1 style={{ fontSize: "1.375rem", fontWeight: 900, color: "var(--navy)" }}>{s.name}</h1>
+              <h1 style={{ fontSize: "1.375rem", fontWeight: 900, color: "var(--navy)" }}>{s.company_name}</h1>
               {s.verified && <span style={{ background: "rgba(22,163,74,0.1)", color: "#16a34a", padding: "0.2rem 0.625rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700 }}>✓ Verified</span>}
-              {s.featured && <span style={{ background: "rgba(199,25,26,0.08)", color: "var(--red)", padding: "0.2rem 0.625rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700 }}>Featured</span>}
+              {s.is_featured && <span style={{ background: "rgba(199,25,26,0.08)", color: "var(--red)", padding: "0.2rem 0.625rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700 }}>Featured</span>}
             </div>
-            <div style={{ fontSize: "0.9rem", color: "var(--gray-500)" }}>{cat?.name} · {s.location} · {s.yearsInBusiness} yrs in business</div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.375rem" }}>
-              <Stars rating={s.rating} />
-              <span style={{ fontWeight: 700, color: "var(--navy)" }}>{s.rating}</span>
-              <span style={{ color: "var(--gray-400)", fontSize: "0.875rem" }}>({s.reviews} reviews)</span>
+            <div style={{ fontSize: "0.9rem", color: "var(--gray-500)" }}>
+              {cat?.name ?? s.category}{location ? ` · ${location}` : ""}{yearsInBusiness > 0 ? ` · ${yearsInBusiness} yrs in business` : ""}
             </div>
+            {rating > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.375rem" }}>
+                <Stars rating={rating} />
+                <span style={{ fontWeight: 700, color: "var(--navy)" }}>{rating}</span>
+                <span style={{ color: "var(--gray-400)", fontSize: "0.875rem" }}>({reviewCount} reviews)</span>
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", gap: "0.75rem", flexShrink: 0 }}>
-            <a href={`tel:${s.phone}`} className="btn-red" style={{ padding: "0.75rem 1.5rem" }}>📞 Call</a>
-            <a href={`mailto:${s.email}`} className="btn-secondary" style={{ padding: "0.75rem 1.5rem" }}>Email</a>
+            {s.phone && <a href={`tel:${s.phone}`} className="btn-red" style={{ padding: "0.75rem 1.5rem" }}>📞 Call</a>}
+            {s.email && <a href={`mailto:${s.email}`} className="btn-secondary" style={{ padding: "0.75rem 1.5rem" }}>Email</a>}
           </div>
         </div>
       </div>
@@ -121,79 +118,35 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             {/* About */}
             <div className="card" style={{ padding: "2rem" }}>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--navy)", marginBottom: "1rem" }}>About {s.name}</h2>
-              <p style={{ color: "var(--gray-600)", lineHeight: 1.85, marginBottom: "1.5rem" }}>{s.description}</p>
-              <div>
-                <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "0.875rem", fontSize: "0.9375rem" }}>Products & Services</h3>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                  {s.products.map(p => (
-                    <span key={p} style={{ background: "rgba(22,46,94,0.07)", color: "var(--navy)", padding: "0.375rem 0.875rem", borderRadius: "999px", fontSize: "0.875rem", fontWeight: 600 }}>{p}</span>
-                  ))}
+              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--navy)", marginBottom: "1rem" }}>About {s.company_name}</h2>
+              <p style={{ color: "var(--gray-600)", lineHeight: 1.85, marginBottom: products.length > 0 ? "1.5rem" : 0 }}>
+                {s.description ?? `${s.company_name} is a local ${cat?.name ?? s.category} supplier${location ? ` serving ${location}` : ""}.`}
+              </p>
+              {products.length > 0 && (
+                <div>
+                  <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "0.875rem", fontSize: "0.9375rem" }}>Products & Services</h3>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {products.map(p => (
+                      <span key={p} style={{ background: "rgba(22,46,94,0.07)", color: "var(--navy)", padding: "0.375rem 0.875rem", borderRadius: "999px", fontSize: "0.875rem", fontWeight: 600 }}>{p}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Brands */}
-            <div className="card" style={{ padding: "2rem" }}>
-              <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--navy)", marginBottom: "1.25rem" }}>Brands Carried</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: "0.625rem" }}>
-                {s.brands.map(brand => (
-                  <div key={brand} style={{ padding: "0.75rem", background: "var(--gray-50)", border: "1px solid var(--gray-150)", borderRadius: "var(--radius-sm)", textAlign: "center", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)" }}>
-                    {brand}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Photo gallery placeholder */}
-            <div className="card" style={{ padding: "2rem" }}>
-              <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--navy)", marginBottom: "1.25rem" }}>Gallery</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "0.625rem" }}>
-                {[1,2,3,4,5,6].map(i => (
-                  <div key={i} style={{ aspectRatio: "4/3", background: `linear-gradient(135deg, ${cat?.color ?? "var(--navy-dark)"}33, ${cat?.color ?? "var(--navy)"}22)`, borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem" }}>
-                    {cat?.icon ?? "🏢"}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Reviews */}
-            <div className="card" style={{ padding: "2rem" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "1.5rem", marginBottom: "2rem", flexWrap: "wrap" }}>
-                <div style={{ textAlign: "center", flexShrink: 0 }}>
-                  <div style={{ fontSize: "4rem", fontWeight: 900, color: "var(--navy)", lineHeight: 1 }}>{s.rating}</div>
-                  <Stars rating={Math.round(s.rating)} size={18} />
-                  <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)", marginTop: "0.375rem" }}>{s.reviews} reviews</div>
-                </div>
-                <div style={{ flex: 1, minWidth: "200px" }}>
-                  {[5,4,3,2,1].map(stars => (
-                    <div key={stars} style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.375rem" }}>
-                      <span style={{ fontSize: "0.8125rem", color: "var(--gray-500)", width: "40px" }}>{stars} star</span>
-                      <div style={{ flex: 1, height: "8px", background: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
-                        <div style={{ height: "100%", background: "#f59e0b", borderRadius: "999px", width: stars === 5 ? "75%" : stars === 4 ? "18%" : "7%" }} />
-                      </div>
+            {brands.length > 0 && (
+              <div className="card" style={{ padding: "2rem" }}>
+                <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--navy)", marginBottom: "1.25rem" }}>Brands Carried</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: "0.625rem" }}>
+                  {brands.map(brand => (
+                    <div key={brand} style={{ padding: "0.75rem", background: "var(--gray-50)", border: "1px solid var(--gray-150)", borderRadius: "var(--radius-sm)", textAlign: "center", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)" }}>
+                      {brand}
                     </div>
                   ))}
                 </div>
               </div>
-              {SUPPLIER_REVIEWS.map((r, i) => (
-                <div key={i} style={{ paddingBottom: "1.5rem", borderBottom: i < SUPPLIER_REVIEWS.length - 1 ? "1px solid var(--gray-100)" : "none", marginBottom: i < SUPPLIER_REVIEWS.length - 1 ? "1.5rem" : 0 }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                      <div style={{ width: "40px", height: "40px", background: "var(--navy)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, flexShrink: 0 }}>
-                        {r.name.charAt(0)}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "0.9375rem" }}>{r.name}</div>
-                        <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>{r.role}</div>
-                      </div>
-                    </div>
-                    <Stars rating={r.rating} />
-                  </div>
-                  <p style={{ color: "var(--gray-600)", lineHeight: 1.75, fontSize: "0.9375rem" }}>{r.text}</p>
-                </div>
-              ))}
-            </div>
+            )}
 
             {/* FAQ */}
             <div className="card" style={{ padding: "2rem" }}>
@@ -205,23 +158,6 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
                 </div>
               ))}
             </div>
-
-            {/* Related */}
-            {related.length > 0 && (
-              <div className="card" style={{ padding: "2rem" }}>
-                <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--navy)", marginBottom: "1.25rem" }}>Similar {cat?.name}</h2>
-                {related.map(r => (
-                  <Link key={r.id} href={`/suppliers/profile/${r.id}`} style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "0.875rem 0", borderBottom: "1px solid var(--gray-100)", textDecoration: "none", transition: "background 0.15s" }}>
-                    <span style={{ fontSize: "1.5rem" }}>{cat?.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: "var(--navy)", fontSize: "0.9rem" }}>{r.name}</div>
-                      <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>{r.location}</div>
-                    </div>
-                    <span style={{ color: "#f59e0b", fontSize: "0.875rem" }}>★ {r.rating}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Sidebar */}
@@ -229,8 +165,8 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
             {/* Contact card */}
             <div className="card" style={{ padding: "1.75rem" }}>
               <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "1.25rem", fontSize: "1.0625rem" }}>Contact</h3>
-              <a href={`tel:${s.phone}`} className="btn-red" style={{ display: "block", textAlign: "center", marginBottom: "0.75rem" }}>{s.phone}</a>
-              <a href={`mailto:${s.email}`} className="btn-secondary" style={{ display: "block", textAlign: "center", marginBottom: "1.25rem" }}>Send Email</a>
+              {s.phone && <a href={`tel:${s.phone}`} className="btn-red" style={{ display: "block", textAlign: "center", marginBottom: "0.75rem" }}>{s.phone}</a>}
+              {s.email && <a href={`mailto:${s.email}`} className="btn-secondary" style={{ display: "block", textAlign: "center", marginBottom: "1.25rem" }}>Send Email</a>}
               {s.website && (
                 <a href={s.website} target="_blank" rel="noopener noreferrer" style={{ display: "block", textAlign: "center", fontSize: "0.875rem", color: "var(--navy)", textDecoration: "none", fontWeight: 600 }}>
                   🌐 Visit Website →
@@ -238,54 +174,63 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
               )}
             </div>
 
-            {/* Hours & location */}
-            <div className="card" style={{ padding: "1.5rem" }}>
-              <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "1rem", fontSize: "1rem" }}>Location & Hours</h3>
-              <div style={{ fontSize: "0.875rem", color: "var(--gray-600)", marginBottom: "0.75rem", lineHeight: 1.65 }}>
-                📍 {s.address}
+            {/* Location & Hours */}
+            {(s.address || s.hours) && (
+              <div className="card" style={{ padding: "1.5rem" }}>
+                <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "1rem", fontSize: "1rem" }}>Location & Hours</h3>
+                {s.address && (
+                  <div style={{ fontSize: "0.875rem", color: "var(--gray-600)", marginBottom: "0.75rem", lineHeight: 1.65 }}>
+                    📍 {s.address}
+                  </div>
+                )}
+                {s.hours && (
+                  <div style={{ fontSize: "0.875rem", color: "var(--gray-600)", marginBottom: s.address ? "1.25rem" : 0, lineHeight: 1.65 }}>
+                    🕐 {s.hours}
+                  </div>
+                )}
+                {s.address && (
+                  <a href={`https://maps.google.com/?q=${encodeURIComponent(s.address)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ height: "140px", background: "linear-gradient(135deg, var(--gray-100), var(--gray-50))", borderRadius: "var(--radius)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "0.5rem", cursor: "pointer", textDecoration: "none" }}>
+                    <span style={{ fontSize: "1.75rem" }}>🗺️</span>
+                    <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>Open in Google Maps</span>
+                  </a>
+                )}
               </div>
-              <div style={{ fontSize: "0.875rem", color: "var(--gray-600)", marginBottom: "1.25rem", lineHeight: 1.65 }}>
-                🕐 {s.hours}
-              </div>
-              {/* Map placeholder */}
-              <a href={`https://maps.google.com/?q=${encodeURIComponent(s.address)}`}
-                target="_blank" rel="noopener noreferrer"
-                style={{ height: "140px", background: "linear-gradient(135deg, var(--gray-100), var(--gray-50))", borderRadius: "var(--radius)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "0.5rem", cursor: "pointer", textDecoration: "none" }}>
-                <span style={{ fontSize: "1.75rem" }}>🗺️</span>
-                <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>Open in Google Maps</span>
-              </a>
-            </div>
+            )}
 
             {/* Quick facts */}
             <div className="card" style={{ padding: "1.5rem" }}>
               <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "1rem", fontSize: "1rem" }}>Quick Facts</h3>
               {[
-                ["Category",        cat?.name ?? ""],
-                ["Location",        s.location],
-                ["In Business",     `${s.yearsInBusiness} years`],
-                ["Reviews",         s.reviews.toString()],
-                ["Rating",          `${s.rating} / 5.0`],
-              ].map(([label, value]) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "0.625rem 0", borderBottom: "1px solid var(--gray-100)", fontSize: "0.875rem" }}>
-                  <span style={{ color: "var(--gray-500)" }}>{label}</span>
-                  <span style={{ fontWeight: 600, color: "var(--navy)" }}>{value}</span>
-                </div>
-              ))}
+                cat?.name && ["Category", cat.name],
+                location && ["Location", location],
+                yearsInBusiness > 0 && ["In Business", `${yearsInBusiness} years`],
+                reviewCount > 0 && ["Reviews", reviewCount.toString()],
+                rating > 0 && ["Rating", `${rating} / 5.0`],
+              ].filter(Boolean).map((row) => {
+                const [label, value] = row as [string, string];
+                return (
+                  <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "0.625rem 0", borderBottom: "1px solid var(--gray-100)", fontSize: "0.875rem" }}>
+                    <span style={{ color: "var(--gray-500)" }}>{label}</span>
+                    <span style={{ fontWeight: 600, color: "var(--navy)" }}>{value}</span>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Social */}
-            {(s.instagram || s.facebook || s.linkedin) && (
+            {(s.instagram_url || s.facebook_url || s.linkedin_url) && (
               <div className="card" style={{ padding: "1.5rem" }}>
                 <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "1rem", fontSize: "1rem" }}>Follow Us</h3>
-                <div style={{ display: "flex", gap: "0.75rem" }}>
-                  {s.instagram && <a href={s.instagram} target="_blank" rel="noopener noreferrer" style={{ padding: "0.5rem 1rem", background: "var(--gray-100)", borderRadius: "var(--radius-sm)", fontSize: "0.8125rem", fontWeight: 600, color: "var(--gray-700)", textDecoration: "none" }}>Instagram</a>}
-                  {s.facebook  && <a href={s.facebook}  target="_blank" rel="noopener noreferrer" style={{ padding: "0.5rem 1rem", background: "var(--gray-100)", borderRadius: "var(--radius-sm)", fontSize: "0.8125rem", fontWeight: 600, color: "var(--gray-700)", textDecoration: "none" }}>Facebook</a>}
-                  {s.linkedin  && <a href={s.linkedin}  target="_blank" rel="noopener noreferrer" style={{ padding: "0.5rem 1rem", background: "var(--gray-100)", borderRadius: "var(--radius-sm)", fontSize: "0.8125rem", fontWeight: 600, color: "var(--gray-700)", textDecoration: "none" }}>LinkedIn</a>}
+                <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                  {s.instagram_url && <a href={s.instagram_url} target="_blank" rel="noopener noreferrer" style={{ padding: "0.5rem 1rem", background: "var(--gray-100)", borderRadius: "var(--radius-sm)", fontSize: "0.8125rem", fontWeight: 600, color: "var(--gray-700)", textDecoration: "none" }}>Instagram</a>}
+                  {s.facebook_url  && <a href={s.facebook_url}  target="_blank" rel="noopener noreferrer" style={{ padding: "0.5rem 1rem", background: "var(--gray-100)", borderRadius: "var(--radius-sm)", fontSize: "0.8125rem", fontWeight: 600, color: "var(--gray-700)", textDecoration: "none" }}>Facebook</a>}
+                  {s.linkedin_url  && <a href={s.linkedin_url}  target="_blank" rel="noopener noreferrer" style={{ padding: "0.5rem 1rem", background: "var(--gray-100)", borderRadius: "var(--radius-sm)", fontSize: "0.8125rem", fontWeight: 600, color: "var(--gray-700)", textDecoration: "none" }}>LinkedIn</a>}
                 </div>
               </div>
             )}
 
-            {/* Disclaimer */}
             <div style={{ background: "var(--gray-50)", borderRadius: "var(--radius)", padding: "1.125rem", border: "1px solid var(--gray-150)" }}>
               <p style={{ fontSize: "0.8125rem", color: "var(--gray-400)", lineHeight: 1.65 }}>
                 Smart Choice Constructions lists local suppliers as a resource for homeowners and contractors. We do not guarantee product availability, pricing, or service quality. <Link href="/terms" style={{ color: "var(--navy)", textDecoration: "none" }}>Terms</Link>

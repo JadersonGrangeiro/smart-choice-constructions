@@ -54,14 +54,16 @@ export async function POST(request: Request) {
         const subscription   = await stripe.subscriptions.retrieve(subscriptionId);
 
         // Create subscription record
+        // current_period_start/end removed from Stripe TS types in basil API but still returned at runtime
+        const sub = subscription as unknown as { current_period_start: number; current_period_end: number };
         await supabase.from("contractor_subscriptions").upsert({
           contractor_id:          contractorId,
           stripe_subscription_id: subscriptionId,
           stripe_customer_id:     session.customer as string,
           stripe_price_id:        subscription.items.data[0].price.id,
           status:                 "active",
-          current_period_start:   new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end:     new Date(subscription.current_period_end   * 1000).toISOString(),
+          current_period_start:   new Date(sub.current_period_start * 1000).toISOString(),
+          current_period_end:     new Date(sub.current_period_end   * 1000).toISOString(),
           cancel_at_period_end:   subscription.cancel_at_period_end,
           updated_at:             new Date().toISOString(),
         }, { onConflict: "contractor_id" });
@@ -95,7 +97,7 @@ export async function POST(request: Request) {
           amount_cents:    session.amount_total,
           currency:        session.currency ?? "usd",
           status:          "succeeded",
-          raw_payload:     event.data.object as Record<string, unknown>,
+          raw_payload:     event.data.object as unknown as Record<string, unknown>,
         });
         break;
       }
@@ -105,19 +107,21 @@ export async function POST(request: Request) {
         const invoice = event.data.object as Stripe.Invoice;
         if (invoice.billing_reason === "subscription_create") break; // handled above
 
-        const subscription = invoice.subscription
-          ? await stripe.subscriptions.retrieve(invoice.subscription as string)
-          : null;
+        // In Stripe basil API, subscription moved to invoice.parent.subscription_details.subscription
+        const subRef = invoice.parent?.subscription_details?.subscription;
+        const subId  = typeof subRef === "string" ? subRef : subRef?.id ?? null;
+        const subscription = subId ? await stripe.subscriptions.retrieve(subId) : null;
         const contractorId  = subscription?.metadata?.contractor_id;
 
         if (!contractorId) break;
 
+        const subP = subscription as unknown as { current_period_start: number; current_period_end: number } | null;
         await supabase
           .from("contractor_subscriptions")
           .update({
             status:               "active",
-            current_period_start: subscription ? new Date(subscription.current_period_start * 1000).toISOString() : undefined,
-            current_period_end:   subscription ? new Date(subscription.current_period_end   * 1000).toISOString() : undefined,
+            current_period_start: subP ? new Date(subP.current_period_start * 1000).toISOString() : undefined,
+            current_period_end:   subP ? new Date(subP.current_period_end   * 1000).toISOString() : undefined,
             failed_payment_count: 0,
             last_failed_at:       null,
             suspended_at:         null,
@@ -147,9 +151,9 @@ export async function POST(request: Request) {
       // ── Invoice payment failed → grace period / suspension ─────────────────
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscription = invoice.subscription
-          ? await stripe.subscriptions.retrieve(invoice.subscription as string)
-          : null;
+        const subRef2 = invoice.parent?.subscription_details?.subscription;
+        const subId2  = typeof subRef2 === "string" ? subRef2 : subRef2?.id ?? null;
+        const subscription = subId2 ? await stripe.subscriptions.retrieve(subId2) : null;
         const contractorId  = subscription?.metadata?.contractor_id;
 
         if (!contractorId) break;
@@ -269,7 +273,7 @@ export async function POST(request: Request) {
           .update({
             status:               subscription.status,
             cancel_at_period_end: subscription.cancel_at_period_end,
-            current_period_end:   new Date(subscription.current_period_end * 1000).toISOString(),
+            current_period_end:   new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000).toISOString(),
             updated_at:           new Date().toISOString(),
           })
           .eq("contractor_id", contractorId);

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -12,13 +12,13 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: object }[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options as object)
           );
         },
       },
@@ -38,7 +38,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login?redirect=/admin", request.url));
     }
 
-    // Check admin role in profiles table
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -66,6 +65,15 @@ export async function middleware(request: NextRequest) {
 
     if (!profile || (profile.role !== "contractor" && profile.role !== "admin")) {
       return NextResponse.redirect(new URL("/login", request.url));
+    }
+  }
+
+  // ── Messages: require any authenticated user ─────────────────────────────────
+  if (pathname.startsWith("/dashboard/messages")) {
+    if (!user) {
+      return NextResponse.redirect(
+        new URL(`/login?redirect=/dashboard/messages`, request.url)
+      );
     }
   }
 

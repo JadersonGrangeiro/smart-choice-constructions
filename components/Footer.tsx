@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
 import { COMPANY, CATEGORIES, US_STATES } from "@/lib/data";
 import { SUPPLIER_CATEGORIES } from "@/lib/supplier-data";
 import { useI18n } from "@/lib/i18n/context";
@@ -8,6 +9,15 @@ export default function Footer() {
   const { t } = useI18n();
   const topCats = CATEGORIES.slice(0, 20);
   const topStates = US_STATES.slice(0, 16);
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+
+  function handleNewsletter(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email) return;
+    setSubscribed(true);
+    setEmail("");
+  }
 
   return (
     <footer>
@@ -127,14 +137,26 @@ export default function Footer() {
                 <div style={{ fontWeight: 700, color: "white", fontSize: "1rem", marginBottom: "0.25rem" }}>{t.footer.newsletter}</div>
                 <div style={{ fontSize: "0.875rem", color: "var(--gray-400)" }}>{t.footer.newsletterSub}</div>
               </div>
-              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-                <input type="email" placeholder={t.footer.emailPlaceholder} style={{
-                  background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.1)",
-                  borderRadius: "var(--radius)", padding: "0.75rem 1.125rem",
-                  color: "white", fontSize: "0.9375rem", fontFamily: "inherit", outline: "none", minWidth: "240px",
-                }} />
-                <button className="btn-red" style={{ padding: "0.75rem 1.5rem" }}>{t.footer.subscribe}</button>
-              </div>
+              {subscribed ? (
+                <div style={{ color: "#4ade80", fontWeight: 600, fontSize: "0.9375rem" }}>
+                  ✓ You're subscribed! Thank you.
+                </div>
+              ) : (
+                <form onSubmit={handleNewsletter} style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                  <input
+                    type="email" required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder={t.footer.emailPlaceholder}
+                    style={{
+                      background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.1)",
+                      borderRadius: "var(--radius)", padding: "0.75rem 1.125rem",
+                      color: "white", fontSize: "0.9375rem", fontFamily: "inherit", outline: "none", minWidth: "240px",
+                    }}
+                  />
+                  <button type="submit" className="btn-red" style={{ padding: "0.75rem 1.5rem" }}>{t.footer.subscribe}</button>
+                </form>
+              )}
             </div>
           </div>
 

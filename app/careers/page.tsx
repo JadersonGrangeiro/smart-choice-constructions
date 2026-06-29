@@ -48,7 +48,7 @@ export default function CareersPage() {
                   <p style={{ color: "var(--gray-500)", fontSize: "0.9375rem", lineHeight: 1.65 }}>{job.desc}</p>
                 </div>
                 <a
-                  href={`mailto:jadersoneua@gmail.com?subject=Application: ${encodeURIComponent(job.title)}`}
+                  href={`mailto:hello@smartchoiceconstructions.com?subject=Application: ${encodeURIComponent(job.title)}`}
                   className="btn-red"
                   style={{ padding: "0.75rem 1.5rem", fontSize: "0.875rem", flexShrink: 0 }}
                 >
@@ -63,7 +63,7 @@ export default function CareersPage() {
             <p style={{ color: "var(--gray-500)", marginBottom: "1.5rem" }}>
               We're always open to hearing from talented people. Send us a note and tell us how you'd contribute.
             </p>
-            <a href="mailto:jadersoneua@gmail.com?subject=General Application" className="btn-primary">
+            <a href="mailto:hello@smartchoiceconstructions.com?subject=General Application" className="btn-primary">
               Get in Touch
             </a>
           </div>

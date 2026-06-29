@@ -1,8 +1,19 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM   = process.env.RESEND_FROM_EMAIL ?? "noreply@smartchoiceconstructions.com";
-const BASE   = process.env.NEXT_PUBLIC_BASE_URL ?? "https://smartchoiceconstructions.com";
+const FROM = process.env.RESEND_FROM_EMAIL ?? "noreply@smartchoiceconstructions.com";
+const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://smartchoiceconstructions.com";
+
+function getResend(): Resend | null {
+  const key = process.env.RESEND_API_KEY;
+  if (!key || key.startsWith("re_placeholder")) return null;
+  return new Resend(key);
+}
+
+async function sendEmail(payload: Parameters<Resend["emails"]["send"]>[0]): Promise<void> {
+  const resend = getResend();
+  if (!resend) return; // email not configured yet — skip silently
+  await resend.emails.send(payload);
+}
 
 function html(body: string) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -19,7 +30,7 @@ function html(body: string) {
 export async function sendWelcomeEmail({
   to, firstName, companyName,
 }: { to: string; firstName: string; companyName: string }) {
-  await resend.emails.send({
+  await sendEmail({
     from: `Smart Choice <${FROM}>`,
     to,
     subject: "Welcome to Smart Choice Constructions!",
@@ -39,7 +50,7 @@ export async function sendWelcomeEmail({
 export async function sendApprovalEmail({
   to, firstName, companyName,
 }: { to: string; firstName: string; companyName: string }) {
-  await resend.emails.send({
+  await sendEmail({
     from: `Smart Choice <${FROM}>`,
     to,
     subject: "Your profile is now LIVE!",
@@ -58,7 +69,7 @@ export async function sendApprovalEmail({
 export async function sendRejectionEmail({
   to, firstName, reason,
 }: { to: string; firstName: string; reason?: string }) {
-  await resend.emails.send({
+  await sendEmail({
     from: `Smart Choice <${FROM}>`,
     to,
     subject: "Update on your Smart Choice application",
@@ -68,7 +79,7 @@ export async function sendRejectionEmail({
         <p>Hi ${firstName}, we've reviewed your application and unfortunately we're unable to approve it at this time.</p>
         ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
         <p>You're welcome to update your information and reapply. If you have questions, please contact our support team.</p>
-        <a href="mailto:jadersoneua@gmail.com" class="btn">Contact Support</a>
+        <a href="mailto:hello@smartchoiceconstructions.com" class="btn">Contact Support</a>
       </div>
       <div class="foot">Smart Choice Constructions LLC</div>
     `),
@@ -79,7 +90,7 @@ export async function sendPaymentFailedEmail({
   to, firstName, failCount,
 }: { to: string; firstName: string; failCount: number }) {
   const isSuspension = failCount >= 3;
-  await resend.emails.send({
+  await sendEmail({
     from: `Smart Choice <${FROM}>`,
     to,
     subject: isSuspension
@@ -104,7 +115,7 @@ export async function sendPaymentFailedEmail({
 export async function sendSubscriptionCanceledEmail({
   to, firstName,
 }: { to: string; firstName: string }) {
-  await resend.emails.send({
+  await sendEmail({
     from: `Smart Choice <${FROM}>`,
     to,
     subject: "Your Smart Choice subscription has been canceled",
@@ -123,7 +134,7 @@ export async function sendSubscriptionCanceledEmail({
 export async function sendQuoteNotificationEmail({
   to, contractorName, serviceName, clientName,
 }: { to: string; contractorName: string; serviceName: string; clientName: string }) {
-  await resend.emails.send({
+  await sendEmail({
     from: `Smart Choice <${FROM}>`,
     to,
     subject: `New quote request: ${serviceName}`,

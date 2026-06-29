@@ -1,8 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { COMPANY } from "@/lib/data";
 
 type Tab = "general"|"pricing"|"integrations"|"email"|"seo"|"security";
+
+interface PlatformSettings {
+  maintenance_mode: string;
+  signup_enabled: string;
+  contractor_signup_enabled: string;
+  first_month_price_cents: string;
+  monthly_price_cents: string;
+  grace_period_days: string;
+  deactivation_days: string;
+}
 
 function Section({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
@@ -26,28 +36,53 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-function SaveBar({ tab }: { tab: string }) {
-  const [saved, setSaved] = useState(false);
+function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "1rem", paddingTop: "1.5rem", borderTop: "1px solid var(--gray-100)", marginTop: "0.5rem" }}>
-      <button className="btn-red" style={{ padding: "0.75rem 1.75rem" }}
-        onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2500); }}>
-        Save {tab} Settings
-      </button>
-      {saved && (
-        <span style={{ fontSize: "0.875rem", color: "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.375rem" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 13l4 4L19 7"/></svg>
-          Saved successfully
-        </span>
-      )}
+    <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", zIndex: 1000, background: type === "success" ? "#16a34a" : "var(--red)", color: "white", padding: "0.875rem 1.5rem", borderRadius: "var(--radius)", fontWeight: 600, fontSize: "0.9rem", boxShadow: "var(--shadow-lg)" }}>
+      {msg}
     </div>
   );
 }
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("general");
+  const [settings, setSettings] = useState<Partial<PlatformSettings>>({});
+  const [saving, setSaving] = useState(false);
   const [logo, setLogo] = useState<string | null>(null);
-  const [favicon, setFavicon] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/settings");
+      const json = await res.json();
+      if (json.settings) setSettings(json.settings);
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const saveSettings = async (patch: Partial<PlatformSettings>) => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error();
+      setSettings(prev => ({ ...prev, ...patch }));
+      showToast("Settings saved");
+    } catch {
+      showToast("Failed to save settings", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "general",      label: "General",      icon: "🏢" },
@@ -60,11 +95,11 @@ export default function SettingsPage() {
 
   return (
     <div>
+      {toast && <Toast msg={toast.msg} type={toast.type} />}
+
       <div style={{ marginBottom: "2rem" }}>
         <h1 style={{ fontSize: "1.625rem", fontWeight: 800, color: "var(--navy)", marginBottom: "0.25rem" }}>Settings</h1>
-        <p style={{ color: "var(--gray-500)", fontSize: "0.875rem" }}>
-          All platform settings — no code editing required.
-        </p>
+        <p style={{ color: "var(--gray-500)", fontSize: "0.875rem" }}>All platform settings — no code editing required.</p>
       </div>
 
       {/* Tab bar */}
@@ -87,268 +122,177 @@ export default function SettingsPage() {
       {/* ── GENERAL ── */}
       {tab === "general" && (
         <div>
-          <Section title="Brand Identity" desc="Logo and favicon used across the entire platform.">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.75rem" }}>
-                  Logo
-                </label>
-                <div style={{ width: "100%", aspectRatio: "3/1", background: logo ? `url(${logo}) center/contain no-repeat` : "var(--gray-50)", border: "2px dashed var(--gray-300)", borderRadius: "var(--radius)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexDirection: "column", gap: "0.5rem", marginBottom: "0.75rem" }}
-                  onClick={() => document.getElementById("logo-upload")?.click()}>
-                  {logo ? null : <>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" strokeWidth="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>Click to upload logo</span>
-                  </>}
-                </div>
-                <input id="logo-upload" type="file" accept="image/*" style={{ display: "none" }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) setLogo(URL.createObjectURL(f)); }} />
-                <p style={{ fontSize: "0.75rem", color: "var(--gray-400)" }}>PNG or SVG · Recommended: 400×120px</p>
+          <Section title="Brand Identity" desc="Logo shown in the header.">
+            <div>
+              <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.75rem" }}>Logo</label>
+              <div style={{ width: "100%", maxWidth: "300px", aspectRatio: "3/1", background: logo ? `url(${logo}) center/contain no-repeat` : "var(--gray-50)", border: "2px dashed var(--gray-300)", borderRadius: "var(--radius)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexDirection: "column", gap: "0.5rem", marginBottom: "0.75rem" }}
+                onClick={() => document.getElementById("logo-upload")?.click()}>
+                {logo ? null : <>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" strokeWidth="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>Click to upload logo</span>
+                </>}
               </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.75rem" }}>
-                  Favicon
+              <input id="logo-upload" type="file" accept="image/*" style={{ display: "none" }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) setLogo(URL.createObjectURL(f)); }} />
+              <p style={{ fontSize: "0.75rem", color: "var(--gray-400)" }}>PNG or SVG · Recommended: 400×120px</p>
+            </div>
+          </Section>
+
+          <Section title="Company Information">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+              <Field label="Company Name"><input className="form-input" defaultValue={COMPANY.legalName} /></Field>
+              <Field label="Contact Email"><input className="form-input" type="email" defaultValue={COMPANY.email} /></Field>
+              <Field label="Contact Phone"><input className="form-input" type="tel" defaultValue={COMPANY.phone} /></Field>
+            </div>
+          </Section>
+
+          <Section title="Platform Switches" desc="Toggle features without redeployment.">
+            {[
+              ["maintenance_mode", "Maintenance Mode", "When enabled, shows a maintenance page to all visitors"],
+              ["signup_enabled", "Homeowner Signup", "Allow new homeowner accounts"],
+              ["contractor_signup_enabled", "Contractor Signup", "Allow new contractor registrations and payments"],
+            ].map(([key, label, hint]) => (
+              <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.875rem 0", borderBottom: "1px solid var(--gray-100)" }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: "var(--navy)", fontSize: "0.9375rem" }}>{label}</div>
+                  <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>{hint}</div>
+                </div>
+                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                  <input type="checkbox"
+                    checked={settings[key as keyof PlatformSettings] === "true"}
+                    onChange={e => saveSettings({ [key]: String(e.target.checked) } as Partial<PlatformSettings>)}
+                    style={{ accentColor: "var(--navy)", width: "18px", height: "18px" }} />
+                  <span style={{ fontSize: "0.875rem", color: "var(--gray-600)" }}>{settings[key as keyof PlatformSettings] === "true" ? "On" : "Off"}</span>
                 </label>
-                <div style={{ width: "80px", height: "80px", background: favicon ? `url(${favicon}) center/contain no-repeat` : "var(--gray-50)", border: "2px dashed var(--gray-300)", borderRadius: "var(--radius)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", marginBottom: "0.75rem" }}
-                  onClick={() => document.getElementById("favicon-upload")?.click()}>
-                  {favicon ? null : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" strokeWidth="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>}
-                </div>
-                <input id="favicon-upload" type="file" accept="image/*" style={{ display: "none" }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) setFavicon(URL.createObjectURL(f)); }} />
-                <p style={{ fontSize: "0.75rem", color: "var(--gray-400)" }}>ICO or PNG · 32×32 or 64×64px</p>
               </div>
-            </div>
+            ))}
           </Section>
-
-          <Section title="Company Information" desc="Displayed in the footer, contact page, and legal documents.">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-              <Field label="Company Name">
-                <input className="form-input" defaultValue={COMPANY.legalName} />
-              </Field>
-              <Field label="Tagline / Slogan">
-                <input className="form-input" defaultValue={COMPANY.tagline} />
-              </Field>
-              <Field label="Contact Email">
-                <input className="form-input" type="email" defaultValue={COMPANY.email} />
-              </Field>
-              <Field label="Contact Phone">
-                <input className="form-input" type="tel" defaultValue={COMPANY.phone} />
-              </Field>
-              <Field label="Street Address" hint="Used in legal pages and structured data.">
-                <input className="form-input" defaultValue="2222 W Grand River Ave Ste A" />
-              </Field>
-              <Field label="City / State / ZIP">
-                <input className="form-input" defaultValue="Okemos, MI 48864" />
-              </Field>
-            </div>
-          </Section>
-
-          <Section title="Social Media" desc="Links shown in the footer and structured data.">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-              {[
-                ["Facebook",  "https://facebook.com/..."],
-                ["Instagram", "https://instagram.com/..."],
-                ["LinkedIn",  "https://linkedin.com/company/..."],
-                ["Twitter/X", "https://twitter.com/..."],
-                ["YouTube",   "https://youtube.com/..."],
-              ].map(([label, placeholder]) => (
-                <Field key={label} label={label}>
-                  <input className="form-input" placeholder={placeholder} />
-                </Field>
-              ))}
-            </div>
-          </Section>
-
-          <Section title="Language & Localization">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-              <Field label="Default Language">
-                <select className="form-select">
-                  <option value="en">English</option>
-                  <option value="es">Spanish</option>
-                </select>
-              </Field>
-              <Field label="Additional Languages" hint="Languages available in the switcher.">
-                <div style={{ display: "flex", gap: "1rem" }}>
-                  {[["en","English"],["es","Spanish"]].map(([code,label]) => (
-                    <label key={code} style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.9rem", color: "var(--gray-700)", fontWeight: 500 }}>
-                      <input type="checkbox" defaultChecked style={{ accentColor: "var(--navy)" }} /> {label}
-                    </label>
-                  ))}
-                </div>
-              </Field>
-            </div>
-          </Section>
-          <SaveBar tab="General" />
         </div>
       )}
 
       {/* ── PRICING ── */}
       {tab === "pricing" && (
         <div>
-          <Section title="Subscription Pricing" desc="Prices charged to contractors. Changes take effect for new subscriptions immediately. Existing subscribers are not affected until their next renewal.">
+          <Section title="Subscription Pricing" desc="Prices charged to contractors. Changes take effect for new subscriptions immediately.">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
-              <div style={{ background: "rgba(22,46,94,0.04)", border: "1.5px solid rgba(22,46,94,0.12)", borderRadius: "var(--radius-lg)", padding: "1.75rem" }}>
-                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.75rem" }}>First Month Price</div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span style={{ fontSize: "1.5rem", color: "var(--gray-500)", fontWeight: 400 }}>$</span>
-                  <input className="form-input" type="number" step="0.01" min="0"
-                    defaultValue={COMPANY.pricing.firstMonth}
-                    style={{ fontSize: "2rem", fontWeight: 800, color: "var(--navy)", border: "none", background: "transparent", padding: "0", width: "120px" }} />
+              {[
+                { key: "first_month_price_cents", label: "First Month Price", hint: "One-time introductory price. Billed on signup." },
+                { key: "monthly_price_cents", label: "Monthly Renewal Price", hint: "Auto-renews monthly until cancelled." },
+              ].map(({ key, label, hint }) => (
+                <div key={key} style={{ background: "rgba(22,46,94,0.04)", border: "1.5px solid rgba(22,46,94,0.12)", borderRadius: "var(--radius-lg)", padding: "1.75rem" }}>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.75rem" }}>{label}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                    <span style={{ fontSize: "1.5rem", color: "var(--gray-500)", fontWeight: 400 }}>$</span>
+                    <input className="form-input" type="number" step="1" min="0"
+                      value={settings[key as keyof PlatformSettings] ?? ""}
+                      onChange={e => setSettings(p => ({ ...p, [key]: e.target.value }))}
+                      style={{ fontSize: "2rem", fontWeight: 800, color: "var(--navy)", border: "none", background: "transparent", padding: "0", width: "140px" }} />
+                    <span style={{ fontSize: "0.8rem", color: "var(--gray-400)" }}>cents</span>
+                  </div>
+                  <p style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>{hint}</p>
                 </div>
-                <p style={{ fontSize: "0.8125rem", color: "var(--gray-400)", marginTop: "0.5rem" }}>
-                  One-time introductory price. Billed on signup.
-                </p>
-              </div>
-              <div style={{ background: "rgba(22,46,94,0.04)", border: "1.5px solid rgba(22,46,94,0.12)", borderRadius: "var(--radius-lg)", padding: "1.75rem" }}>
-                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.75rem" }}>Monthly Renewal Price</div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span style={{ fontSize: "1.5rem", color: "var(--gray-500)", fontWeight: 400 }}>$</span>
-                  <input className="form-input" type="number" step="0.01" min="0"
-                    defaultValue={COMPANY.pricing.monthly}
-                    style={{ fontSize: "2rem", fontWeight: 800, color: "var(--navy)", border: "none", background: "transparent", padding: "0", width: "120px" }} />
-                </div>
-                <p style={{ fontSize: "0.8125rem", color: "var(--gray-400)", marginTop: "0.5rem" }}>
-                  Auto-renews monthly until cancelled.
-                </p>
-              </div>
+              ))}
             </div>
-            <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "var(--radius)", padding: "1rem 1.25rem" }}>
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button className="btn-red" style={{ padding: "0.75rem 1.75rem" }} disabled={saving}
+                onClick={() => saveSettings({
+                  first_month_price_cents: settings.first_month_price_cents ?? "2990",
+                  monthly_price_cents: settings.monthly_price_cents ?? "4990",
+                })}>
+                {saving ? "Saving..." : "Save Pricing Settings"}
+              </button>
+            </div>
+            <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "var(--radius)", padding: "1rem 1.25rem", marginTop: "1.25rem" }}>
               <p style={{ fontSize: "0.875rem", color: "#92400e" }}>
-                <strong>Important:</strong> After changing prices here, you must also update the corresponding Stripe Price IDs in the Integrations tab. Stripe controls the actual billing amount.
+                <strong>Important:</strong> Changing cents here updates the database display only. The actual billing amount is controlled by Stripe Price IDs in your .env.local file.
               </p>
             </div>
           </Section>
 
-          <Section title="Grace Period" desc="How long a contractor profile remains visible after a failed payment before being suspended.">
-            <Field label="Grace Period (days)" hint="After this many days with a failed payment, the profile is hidden from search results.">
-              <input className="form-input" type="number" min="0" max="30" defaultValue="3" style={{ width: "120px" }} />
-            </Field>
-            <Field label="Deactivation Period (days)" hint="After this many days suspended with no payment, the account is permanently deactivated.">
-              <input className="form-input" type="number" min="1" max="90" defaultValue="30" style={{ width: "120px" }} />
-            </Field>
+          <Section title="Grace Period">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+              <Field label="Grace Period (days)" hint="Days after a failed payment before profile is hidden.">
+                <input className="form-input" type="number" min="0" max="30" style={{ width: "120px" }}
+                  value={settings.grace_period_days ?? "3"}
+                  onChange={e => setSettings(p => ({ ...p, grace_period_days: e.target.value }))} />
+              </Field>
+              <Field label="Deactivation Period (days)" hint="Days suspended with no payment before permanent deactivation.">
+                <input className="form-input" type="number" min="1" max="90" style={{ width: "120px" }}
+                  value={settings.deactivation_days ?? "30"}
+                  onChange={e => setSettings(p => ({ ...p, deactivation_days: e.target.value }))} />
+              </Field>
+            </div>
+            <button className="btn-red" style={{ padding: "0.75rem 1.75rem" }} disabled={saving}
+              onClick={() => saveSettings({ grace_period_days: settings.grace_period_days, deactivation_days: settings.deactivation_days })}>
+              {saving ? "Saving..." : "Save Grace Period Settings"}
+            </button>
           </Section>
-          <SaveBar tab="Pricing" />
         </div>
       )}
 
       {/* ── INTEGRATIONS ── */}
       {tab === "integrations" && (
         <div>
-          <Section title="Google Analytics" desc="Tracks pageviews, sessions, and user behaviour across the platform.">
-            <Field label="Measurement ID" hint="Format: G-XXXXXXXXXX — found in Google Analytics → Admin → Data Streams.">
-              <input className="form-input" placeholder="G-XXXXXXXXXX" style={{ fontFamily: "monospace" }} />
-            </Field>
-            <Field label="Enable Analytics">
-              <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer" }}>
-                <input type="checkbox" defaultChecked style={{ accentColor: "var(--navy)", width: "18px", height: "18px" }} />
-                <span style={{ fontSize: "0.9375rem", color: "var(--gray-700)" }}>Active — tracking is enabled</span>
-              </label>
-            </Field>
-          </Section>
-
-          <Section title="Google Tag Manager" desc="Manages all tracking tags without code deployments.">
-            <Field label="Container ID" hint="Format: GTM-XXXXXXX">
-              <input className="form-input" placeholder="GTM-XXXXXXX" style={{ fontFamily: "monospace" }} />
-            </Field>
-          </Section>
-
-          <Section title="Meta Pixel" desc="Facebook/Instagram ads tracking and retargeting.">
-            <Field label="Pixel ID">
-              <input className="form-input" placeholder="1234567890123456" style={{ fontFamily: "monospace" }} />
-            </Field>
-          </Section>
-
-          <Section title="Stripe" desc="Payment processor for contractor subscriptions. Update these when creating new pricing in Stripe Dashboard.">
-            <div style={{ background: "rgba(200,16,46,0.04)", border: "1px solid rgba(200,16,46,0.12)", borderRadius: "var(--radius)", padding: "1rem 1.25rem", marginBottom: "1.25rem" }}>
-              <p style={{ fontSize: "0.875rem", color: "var(--gray-700)" }}>
-                <strong>Security note:</strong> Secret keys are stored encrypted server-side and never exposed to the browser. Only enter keys in this form — they are not visible after saving.
+          <Section title="Stripe" desc="Payment processor for contractor subscriptions.">
+            <div style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: "var(--radius)", padding: "1rem 1.25rem", marginBottom: "1.25rem" }}>
+              <p style={{ fontSize: "0.875rem", color: "#16a34a", fontWeight: 600 }}>
+                ✓ Stripe is configured via environment variables (.env.local / Vercel settings).
               </p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-              <Field label="Publishable Key (live)" hint="Starts with pk_live_">
-                <input className="form-input" placeholder="pk_live_..." style={{ fontFamily: "monospace" }} type="password" />
+              <Field label="Publishable Key" hint="Set via NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY env var">
+                <input className="form-input" value="pk_test_***configured***" disabled style={{ fontFamily: "monospace", opacity: 0.6 }} />
               </Field>
-              <Field label="Secret Key (live)" hint="Starts with sk_live_ — stored encrypted">
-                <input className="form-input" placeholder="sk_live_..." style={{ fontFamily: "monospace" }} type="password" />
+              <Field label="First-Month Price ID" hint="Set via STRIPE_PRICE_FIRST_MONTH env var">
+                <input className="form-input" value="price_***configured***" disabled style={{ fontFamily: "monospace", opacity: 0.6 }} />
               </Field>
-              <Field label="Webhook Secret" hint="Starts with whsec_">
-                <input className="form-input" placeholder="whsec_..." style={{ fontFamily: "monospace" }} type="password" />
-              </Field>
-              <Field label="First-Month Price ID">
-                <input className="form-input" placeholder="price_..." style={{ fontFamily: "monospace" }} />
-              </Field>
-              <Field label="Monthly Renewal Price ID">
-                <input className="form-input" placeholder="price_..." style={{ fontFamily: "monospace" }} />
-              </Field>
-              <Field label="Product ID">
-                <input className="form-input" placeholder="prod_..." style={{ fontFamily: "monospace" }} />
+              <Field label="Monthly Price ID" hint="Set via STRIPE_PRICE_MONTHLY env var">
+                <input className="form-input" value="price_***configured***" disabled style={{ fontFamily: "monospace", opacity: 0.6 }} />
               </Field>
             </div>
           </Section>
 
-          <Section title="Google Search Console" desc="Used to verify domain ownership for search indexing.">
-            <Field label="Verification Token" hint="The token value from the HTML meta tag method.">
-              <input className="form-input" placeholder="google-site-verification token" style={{ fontFamily: "monospace" }} />
+          <Section title="Analytics & Tracking" desc="Add tracking IDs below — they take effect on next deploy or page reload.">
+            <Field label="Google Analytics Measurement ID" hint="Format: G-XXXXXXXXXX">
+              <input className="form-input" placeholder="G-XXXXXXXXXX" style={{ fontFamily: "monospace" }} />
+            </Field>
+            <Field label="Meta Pixel ID">
+              <input className="form-input" placeholder="1234567890123456" style={{ fontFamily: "monospace" }} />
             </Field>
           </Section>
-          <SaveBar tab="Integrations" />
         </div>
       )}
 
-      {/* ── EMAIL / SMTP ── */}
+      {/* ── EMAIL ── */}
       {tab === "email" && (
         <div>
-          <Section title="SMTP Configuration" desc="Used to send transactional emails (welcome, password reset, payment alerts, notifications).">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-              <Field label="SMTP Host">
-                <input className="form-input" placeholder="smtp.sendgrid.net" />
-              </Field>
-              <Field label="Port">
-                <input className="form-input" type="number" defaultValue="587" style={{ width: "120px" }} />
-              </Field>
-              <Field label="Username / API Key">
-                <input className="form-input" placeholder="apikey" />
-              </Field>
-              <Field label="Password">
-                <input className="form-input" type="password" placeholder="•••••••••••••" />
-              </Field>
-              <Field label="From Address">
-                <input className="form-input" type="email" placeholder="noreply@smartchoiceconstructions.com" />
-              </Field>
-              <Field label="From Name">
-                <input className="form-input" defaultValue="Smart Choice Constructions" />
-              </Field>
+          <Section title="Email Provider" desc="Transactional emails are sent via Resend.">
+            <div style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: "var(--radius)", padding: "1rem 1.25rem", marginBottom: "1.25rem" }}>
+              <p style={{ fontSize: "0.875rem", color: "#16a34a", fontWeight: 600 }}>
+                ✓ Resend is configured via RESEND_API_KEY environment variable.
+              </p>
             </div>
-            <div style={{ marginTop: "1.25rem" }}>
-              <button className="btn-secondary" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>
-                Send Test Email
-              </button>
-            </div>
+            <Field label="From Address" hint="Set via RESEND_FROM_EMAIL env var">
+              <input className="form-input" value="noreply@smartchoiceconstructions.com" disabled style={{ opacity: 0.6 }} />
+            </Field>
           </Section>
 
-          <Section title="Email Templates" desc="Which automated emails are active. Content is managed in code.">
+          <Section title="Active Email Templates">
             {[
               ["Welcome Email",              "Sent when a contractor's account is approved"],
               ["Payment Failed",             "Sent when a renewal payment fails"],
-              ["Profile Suspended",          "Sent when grace period expires"],
-              ["Payment Confirmed",          "Sent on each successful renewal"],
-              ["Password Reset",             "Sent when a user requests a password reset"],
-              ["Quote Request Notification", "Sent to contractor when a homeowner submits a quote request"],
-              ["Document Approved",          "Sent when admin approves a submitted document"],
-              ["Document Rejected",          "Sent when admin rejects a submitted document"],
+              ["Subscription Canceled",      "Sent when a contractor cancels"],
+              ["Quote Request Notification", "Sent to contractor when a homeowner submits a quote"],
             ].map(([name, desc]) => (
               <div key={name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.875rem 0", borderBottom: "1px solid var(--gray-100)" }}>
                 <div>
                   <div style={{ fontWeight: 600, color: "var(--navy)", fontSize: "0.9375rem" }}>{name}</div>
                   <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>{desc}</div>
                 </div>
-                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
-                  <input type="checkbox" defaultChecked style={{ accentColor: "var(--navy)", width: "16px", height: "16px" }} />
-                  <span style={{ fontSize: "0.875rem", color: "var(--gray-600)" }}>Active</span>
-                </label>
+                <span style={{ background: "rgba(22,163,74,0.1)", color: "#16a34a", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700 }}>Active</span>
               </div>
             ))}
           </Section>
-          <SaveBar tab="Email" />
         </div>
       )}
 
@@ -356,66 +300,37 @@ export default function SettingsPage() {
       {tab === "seo" && (
         <div>
           <Section title="Default SEO" desc="Fallback metadata used when a page doesn't have specific SEO settings.">
-            <Field label="Default Title Template" hint="Use %s as placeholder for the page name. Example: %s | Smart Choice Constructions">
+            <Field label="Default Title Template" hint="Use %s as placeholder for the page name.">
               <input className="form-input" defaultValue="%s | Smart Choice Constructions" />
             </Field>
             <Field label="Default Meta Description">
-              <textarea className="form-input" rows={3} defaultValue="Smart Choice Constructions connects homeowners with local construction professionals across the United States. Free to use for homeowners." style={{ resize: "vertical" }} />
-            </Field>
-            <Field label="Default OG Image" hint="1200×630px recommended. Used for social sharing previews.">
-              <div style={{ display: "flex", gap: "0.875rem", alignItems: "flex-start" }}>
-                <div style={{ width: "200px", height: "105px", background: "var(--gray-100)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontSize: "0.75rem", color: "var(--gray-400)" }}>OG Image Preview</span>
-                </div>
-                <button className="btn-secondary" style={{ padding: "0.625rem 1.125rem", fontSize: "0.875rem" }}>
-                  Upload Image
-                </button>
-              </div>
+              <textarea className="form-input" rows={3} defaultValue="Smart Choice Constructions connects homeowners with local construction professionals across the United States." style={{ resize: "vertical" }} />
             </Field>
           </Section>
 
-          <Section title="Sitemap & Indexing" desc="Controls how search engines discover and index the platform.">
-            <Field label="Canonical Domain" hint="Used in all canonical URL tags. Must match your actual domain.">
+          <Section title="Sitemap & Indexing">
+            <Field label="Canonical Domain">
               <input className="form-input" defaultValue="https://smartchoiceconstructions.com" style={{ fontFamily: "monospace" }} />
             </Field>
-            <Field label="Robots.txt Rules">
-              <textarea className="form-input" rows={6} style={{ fontFamily: "monospace", fontSize: "0.875rem", resize: "vertical" }} defaultValue={`User-Agent: *\nAllow: /\nDisallow: /dashboard/\nDisallow: /admin/\n\nSitemap: https://smartchoiceconstructions.com/sitemap.xml`} />
-            </Field>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer" }}>
-              <input type="checkbox" defaultChecked style={{ accentColor: "var(--navy)", width: "18px", height: "18px" }} />
-              <div>
-                <div style={{ fontWeight: 600, color: "var(--navy)", fontSize: "0.9375rem" }}>Auto-generate sitemap</div>
-                <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>Rebuilds sitemap on every deployment. Includes all pages, states, cities, and contractor profiles.</div>
-              </div>
-            </label>
           </Section>
-          <SaveBar tab="SEO" />
         </div>
       )}
 
       {/* ── SECURITY ── */}
       {tab === "security" && (
         <div>
-          <Section title="Admin Access" desc="Protect the admin panel from unauthorized access.">
-            <Field label="Admin Password" hint="Used for HTTP Basic Auth on /admin/* routes when deploying to Netlify.">
-              <input className="form-input" type="password" placeholder="Current password hidden" />
+          <Section title="Platform Access">
+            <Field label="Maintenance Mode" hint="Blocks all public access and shows a maintenance message.">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <input type="checkbox"
+                  checked={settings.maintenance_mode === "true"}
+                  onChange={e => saveSettings({ maintenance_mode: String(e.target.checked) })}
+                  style={{ accentColor: "var(--navy)", width: "18px", height: "18px" }} />
+                <span style={{ fontSize: "0.9375rem", color: "var(--gray-700)" }}>
+                  {settings.maintenance_mode === "true" ? "Enabled — site is in maintenance mode" : "Disabled — site is live"}
+                </span>
+              </div>
             </Field>
-            <Field label="Allowed Admin IPs" hint="Leave blank to allow all IPs. Enter one IP per line to restrict access.">
-              <textarea className="form-input" rows={4} placeholder="203.0.113.1&#10;198.51.100.0/24" style={{ fontFamily: "monospace", fontSize: "0.875rem" }} />
-            </Field>
-          </Section>
-
-          <Section title="Rate Limiting" desc="Protects forms and API endpoints from abuse.">
-            {[
-              ["Quote requests per IP per hour",  "20",  "Prevents spam quote submissions"],
-              ["Login attempts per IP per 15 min","5",   "Prevents brute-force attacks"],
-              ["Registration attempts per IP/day", "3",   "Prevents fake account creation"],
-              ["Document uploads per contractor/day","10","Prevents upload abuse"],
-            ].map(([label, def, hint]) => (
-              <Field key={label} label={label} hint={hint}>
-                <input className="form-input" type="number" defaultValue={def} style={{ width: "120px" }} />
-              </Field>
-            ))}
           </Section>
 
           <Section title="Content Security" desc="Upload and content restrictions.">
@@ -425,11 +340,7 @@ export default function SettingsPage() {
             <Field label="Allowed file types for documents" hint="Comma-separated MIME types.">
               <input className="form-input" defaultValue="application/pdf,image/jpeg,image/png" style={{ fontFamily: "monospace" }} />
             </Field>
-            <Field label="Allowed file types for photos">
-              <input className="form-input" defaultValue="image/jpeg,image/png,image/webp" style={{ fontFamily: "monospace" }} />
-            </Field>
           </Section>
-          <SaveBar tab="Security" />
         </div>
       )}
     </div>

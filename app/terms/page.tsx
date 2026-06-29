@@ -65,7 +65,7 @@ const SECTIONS = [
   },
   {
     title: "15. Contact",
-    body: "Questions about these Terms may be directed to: jadersoneua@gmail.com — Smart Choice Constructions LLC, 2222 W Grand River Ave Ste A, Okemos, MI 48864.",
+    body: "Questions about these Terms may be directed to: hello@smartchoiceconstructions.com — Smart Choice Constructions LLC, 2222 W Grand River Ave Ste A, Okemos, MI 48864.",
   },
 ];
 

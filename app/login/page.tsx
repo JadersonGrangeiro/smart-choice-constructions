@@ -1,21 +1,21 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/context";
 
-export default function LoginPage() {
+function LoginForm() {
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/";
 
-  const [tab, setTab]         = useState<"homeowner" | "contractor">("homeowner");
-  const [email, setEmail]     = useState("");
+  const [tab, setTab]           = useState<"homeowner" | "contractor">("homeowner");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError]     = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
 
   const handleSubmit = async () => {
     if (!email || !password) { setError("Please fill in all fields."); return; }
@@ -33,8 +33,14 @@ export default function LoginPage() {
       return;
     }
 
-    // Redirect based on role
-    const role = data.user?.user_metadata?.role ?? "customer";
+    // Read role from profiles table (authoritative source)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single();
+    const role = profile?.role ?? "customer";
+
     if (redirect && redirect !== "/") {
       router.push(redirect);
     } else if (role === "admin") {
@@ -130,5 +136,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
