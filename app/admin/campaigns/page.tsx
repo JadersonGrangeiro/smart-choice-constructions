@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 type CampaignStatus = "active" | "scheduled" | "ended" | "draft";
 type CampaignTarget = "all_contractors" | "new_contractors" | "past_due" | "all_homeowners" | "suppliers";
@@ -43,6 +43,20 @@ export default function CampaignsPage() {
   const [showNew, setShowNew] = useState(false);
   const [filter, setFilter] = useState<CampaignStatus | "all">("all");
   const [newC, setNewC] = useState<Partial<Campaign>>({ type: "discount", target: "all_contractors", status: "draft" });
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/platform-data?key=campaigns");
+      const json = await res.json();
+      if (json.value && Array.isArray(json.value)) setCampaigns(json.value);
+    } catch {}
+  }, []);
+
+  const persist = useCallback(async (updated: Campaign[]) => {
+    fetch("/api/admin/platform-data", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "campaigns", value: updated }) }).catch(() => {});
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const filtered = filter === "all" ? campaigns : campaigns.filter(c => c.status === filter);
   const totalConversions = campaigns.filter(c => c.status === "active" || c.status === "ended").reduce((s,c) => s + c.conversions, 0);
@@ -104,7 +118,8 @@ export default function CampaignsPage() {
           <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
             <button className="btn-red" onClick={() => {
               if (!newC.name) return;
-              setCampaigns(p => [...p, { ...(newC as Campaign), id: `cam${Date.now()}`, status: "draft", impressions: 0, conversions: 0, revenue: 0 }]);
+              const updated = [...campaigns, { ...(newC as Campaign), id: `cam${Date.now()}`, status: "draft" as CampaignStatus, impressions: 0, conversions: 0, revenue: 0 }];
+              setCampaigns(updated); persist(updated);
               setShowNew(false);
             }}>Create Campaign</button>
             <button className="btn-secondary" onClick={() => setShowNew(false)}>Cancel</button>
@@ -143,8 +158,8 @@ export default function CampaignsPage() {
                 {/* Actions */}
                 <div style={{ display: "flex", gap: "0.375rem", flexShrink: 0 }}>
                   <button style={{ padding: "0.375rem 0.75rem", background: "var(--gray-100)", border: "none", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", color: "var(--gray-700)", fontFamily: "inherit" }}>Edit</button>
-                  {c.status === "draft" && <button onClick={() => setCampaigns(p => p.map(x => x.id === c.id ? { ...x, status: "active" } : x))} style={{ padding: "0.375rem 0.75rem", background: "rgba(22,163,74,0.1)", color: "#16a34a", border: "none", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Launch</button>}
-                  {c.status === "active" && <button onClick={() => setCampaigns(p => p.map(x => x.id === c.id ? { ...x, status: "ended" } : x))} style={{ padding: "0.375rem 0.75rem", background: "rgba(245,158,11,0.1)", color: "#d97706", border: "none", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>End</button>}
+                  {c.status === "draft" && <button onClick={() => { const u = campaigns.map(x => x.id === c.id ? { ...x, status: "active" as CampaignStatus } : x); setCampaigns(u); persist(u); }} style={{ padding: "0.375rem 0.75rem", background: "rgba(22,163,74,0.1)", color: "#16a34a", border: "none", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Launch</button>}
+                  {c.status === "active" && <button onClick={() => { const u = campaigns.map(x => x.id === c.id ? { ...x, status: "ended" as CampaignStatus } : x); setCampaigns(u); persist(u); }} style={{ padding: "0.375rem 0.75rem", background: "rgba(245,158,11,0.1)", color: "#d97706", border: "none", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>End</button>}
                 </div>
               </div>
             </div>

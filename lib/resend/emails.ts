@@ -131,6 +131,45 @@ export async function sendSubscriptionCanceledEmail({
   });
 }
 
+export async function sendContactEmail({
+  firstName, lastName, email, phone, userType, subject, message,
+}: { firstName: string; lastName: string; email: string; phone?: string; userType?: string; subject?: string; message: string }) {
+  const ADMIN_EMAIL = process.env.RESEND_FROM_EMAIL ?? "hello@smartchoiceconstructions.com";
+  await sendEmail({
+    from: `Smart Choice <${FROM}>`,
+    to: ADMIN_EMAIL,
+    replyTo: email,
+    subject: `Contact Form: ${subject || "General Inquiry"} — ${firstName} ${lastName}`,
+    html: html(`
+      <div class="head"><h1>New Contact Form Submission</h1></div>
+      <div class="body">
+        <p><strong>Name:</strong> ${firstName} ${lastName}</p>
+        <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
+        ${phone ? `<p><strong>Phone:</strong> ${phone}</p>` : ""}
+        ${userType ? `<p><strong>I am a:</strong> ${userType}</p>` : ""}
+        ${subject ? `<p><strong>Subject:</strong> ${subject}</p>` : ""}
+        <hr style="border:none;border-top:1px solid #eee;margin:20px 0"/>
+        <p style="white-space:pre-line">${message}</p>
+      </div>
+      <div class="foot">Smart Choice Constructions LLC</div>
+    `),
+  });
+  // Auto-reply to user
+  await sendEmail({
+    from: `Smart Choice <${FROM}>`,
+    to: email,
+    subject: "We received your message — Smart Choice Constructions",
+    html: html(`
+      <div class="head"><h1>Thanks for reaching out, ${firstName}!</h1></div>
+      <div class="body">
+        <p>We've received your message and will get back to you within 1 business day.</p>
+        <p>In the meantime, feel free to <a href="${BASE}/find-contractors">browse our contractor directory</a> or check out our <a href="${BASE}/faq">FAQ</a>.</p>
+      </div>
+      <div class="foot">Smart Choice Constructions LLC · hello@smartchoiceconstructions.com</div>
+    `),
+  });
+}
+
 export async function sendQuoteNotificationEmail({
   to, contractorName, serviceName, clientName,
 }: { to: string; contractorName: string; serviceName: string; clientName: string }) {

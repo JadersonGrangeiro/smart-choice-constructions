@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 type NotifType = "all_contractors" | "active_contractors" | "past_due" | "pending_approval" | "all_homeowners";
 
@@ -34,6 +34,20 @@ export default function NotificationsAdminPage() {
   const [notifs, setNotifs] = useState(MOCK_NOTIFS);
   const [showNew, setShowNew] = useState(false);
   const [newNotif, setNewNotif] = useState({ title: "", body: "", type: "active_contractors" as NotifType, channel: "email" as "email"|"dashboard", scheduledFor: "" });
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/platform-data?key=notifications");
+      const json = await res.json();
+      if (json.value && Array.isArray(json.value)) setNotifs(json.value);
+    } catch {}
+  }, []);
+
+  const persist = useCallback((updated: Notification[]) => {
+    fetch("/api/admin/platform-data", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "notifications", value: updated }) }).catch(() => {});
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   return (
     <div>
@@ -81,13 +95,13 @@ export default function NotificationsAdminPage() {
           </div>
           <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
             <button className="btn-secondary" onClick={() => {
-              setNotifs(prev => [...prev, { id: `n${Date.now()}`, ...newNotif, sentAt: null, status: "draft", recipients: 0 }]);
-              setShowNew(false);
+              const u = [...notifs, { id: `n${Date.now()}`, ...newNotif, sentAt: null, status: "draft" as const, recipients: 0 }];
+              setNotifs(u); persist(u); setShowNew(false);
             }}>Save Draft</button>
             <button className="btn-red" onClick={() => {
               if (!newNotif.title || !newNotif.body) return;
-              setNotifs(prev => [...prev, { id: `n${Date.now()}`, ...newNotif, sentAt: new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}), status: newNotif.scheduledFor ? "scheduled" : "sent", recipients: 287 }]);
-              setShowNew(false);
+              const u = [...notifs, { id: `n${Date.now()}`, ...newNotif, sentAt: new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}), status: (newNotif.scheduledFor ? "scheduled" : "sent") as const, recipients: 287 }];
+              setNotifs(u); persist(u); setShowNew(false);
             }}>
               {newNotif.scheduledFor ? "Schedule" : "Send Now"}
             </button>
@@ -123,7 +137,7 @@ export default function NotificationsAdminPage() {
                     <button style={{ padding: "0.5rem 1rem", background: "var(--gray-100)", border: "none", borderRadius: "var(--radius-sm)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", color: "var(--gray-700)", fontFamily: "inherit" }}>
                       Edit
                     </button>
-                    <button onClick={() => setNotifs(p => p.map(x => x.id === n.id ? { ...x, status: "sent", sentAt: "Now", recipients: 287 } : x))}
+                    <button onClick={() => { const u = notifs.map(x => x.id === n.id ? { ...x, status: "sent" as const, sentAt: "Now", recipients: 287 } : x); setNotifs(u); persist(u); }}
                       style={{ padding: "0.5rem 1rem", background: "var(--navy)", color: "white", border: "none", borderRadius: "var(--radius-sm)", fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                       Send Now
                     </button>

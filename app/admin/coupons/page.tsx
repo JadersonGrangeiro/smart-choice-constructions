@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface Coupon {
   id: string; code: string; type: "percent" | "fixed"; value: number;
@@ -21,7 +21,21 @@ export default function CouponsAdminPage() {
   const [showNew, setShowNew] = useState(false);
   const [newCode, setNewCode] = useState({ code: "", type: "percent" as "percent"|"fixed", value: 0, maxUses: "", firstMonthOnly: true, validUntil: "", description: "" });
 
-  const toggle = (id: string) => setCoupons(prev => prev.map(c => c.id === id ? { ...c, active: !c.active } : c));
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/platform-data?key=coupons");
+      const json = await res.json();
+      if (json.value && Array.isArray(json.value)) setCoupons(json.value);
+    } catch {}
+  }, []);
+
+  const persist = useCallback((updated: Coupon[]) => {
+    fetch("/api/admin/platform-data", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "coupons", value: updated }) }).catch(() => {});
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const toggle = (id: string) => { const u = coupons.map(c => c.id === id ? { ...c, active: !c.active } : c); setCoupons(u); persist(u); };
 
   return (
     <div>
@@ -82,7 +96,8 @@ export default function CouponsAdminPage() {
           <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
             <button className="btn-red" onClick={() => {
               if (!newCode.code || !newCode.value) return;
-              setCoupons(prev => [...prev, { id: `c${Date.now()}`, ...newCode, maxUses: newCode.maxUses ? Number(newCode.maxUses) : null, validFrom: new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}), validUntil: newCode.validUntil || null, uses: 0, active: true }]);
+              const u = [...coupons, { id: `c${Date.now()}`, ...newCode, maxUses: newCode.maxUses ? Number(newCode.maxUses) : null, validFrom: new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}), validUntil: newCode.validUntil || null, uses: 0, active: true }];
+              setCoupons(u); persist(u);
               setShowNew(false);
             }}>Save Coupon</button>
             <button className="btn-secondary" onClick={() => setShowNew(false)}>Cancel</button>

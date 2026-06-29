@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       contact_name, contact_email, contact_phone,
     } = body;
 
-    if (!contractor_id || !service_type || !contact_name || !contact_email) {
+    if (!service_type || !contact_name || !contact_email) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 

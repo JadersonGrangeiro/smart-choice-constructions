@@ -47,6 +47,8 @@ function LoginForm() {
       router.push("/admin");
     } else if (role === "contractor") {
       router.push("/dashboard/contractor");
+    } else if (role === "supplier") {
+      router.push("/dashboard/supplier");
     } else {
       router.push("/account");
     }

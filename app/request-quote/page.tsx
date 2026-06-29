@@ -4,10 +4,60 @@ import Link from "next/link";
 import { CATEGORIES, US_STATES } from "@/lib/data";
 import { useI18n } from "@/lib/i18n/context";
 
+interface FormData {
+  category: string; description: string; timeline: string; budget: string;
+  state: string; city: string; zip: string; address: string;
+  firstName: string; lastName: string; email: string; phone: string; bestTime: string;
+}
+
+const INITIAL: FormData = {
+  category: "", description: "", timeline: "As soon as possible", budget: "Not sure yet",
+  state: "", city: "", zip: "", address: "",
+  firstName: "", lastName: "", email: "", phone: "", bestTime: "Anytime",
+};
+
 export default function RequestQuotePage() {
   const { t } = useI18n();
   const [step, setStep] = useState(1);
+  const [form, setForm] = useState<FormData>(INITIAL);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (k: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm(p => ({ ...p, [k]: e.target.value }));
+
+  async function handleSubmit() {
+    if (!form.firstName || !form.email || !form.phone) {
+      setError("Please fill in your name, email, and phone number.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          service_type: form.category || "General Contractor",
+          description: `${form.description}\n\nTimeline: ${form.timeline}\nBudget: ${form.budget}`,
+          budget_range: form.budget,
+          city: form.city,
+          state_code: form.state,
+          zip_code: form.zip,
+          contact_name: `${form.firstName} ${form.lastName}`.trim(),
+          contact_email: form.email,
+          contact_phone: form.phone,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setSubmitted(true);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   if (submitted) {
     return (
@@ -54,34 +104,25 @@ export default function RequestQuotePage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
               <div>
                 <label className="form-label">Service Category *</label>
-                <select className="form-select">
+                <select className="form-select" value={form.category} onChange={set("category")}>
                   <option value="">Select the service you need</option>
                   {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="form-label">Project Description *</label>
-                <textarea placeholder="Describe your project in detail — size, scope, materials, and preferred timeline..." className="form-input" rows={5} style={{ resize: "vertical" }} />
+                <textarea placeholder="Describe your project in detail — size, scope, materials, and preferred timeline..." className="form-input" rows={5} style={{ resize: "vertical" }} value={form.description} onChange={set("description")} />
               </div>
               <div>
                 <label className="form-label">When Do You Need This Done?</label>
-                <select className="form-select">
-                  <option>As soon as possible</option>
-                  <option>Within 1 week</option>
-                  <option>Within 1 month</option>
-                  <option>Within 3 months</option>
-                  <option>Planning ahead</option>
+                <select className="form-select" value={form.timeline} onChange={set("timeline")}>
+                  {["As soon as possible","Within 1 week","Within 1 month","Within 3 months","Planning ahead"].map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
               <div>
                 <label className="form-label">Estimated Budget</label>
-                <select className="form-select">
-                  <option>Under $1,000</option>
-                  <option>$1,000 – $5,000</option>
-                  <option>$5,000 – $15,000</option>
-                  <option>$15,000 – $50,000</option>
-                  <option>$50,000+</option>
-                  <option>Not sure yet</option>
+                <select className="form-select" value={form.budget} onChange={set("budget")}>
+                  {["Under $1,000","$1,000 – $5,000","$5,000 – $15,000","$15,000 – $50,000","$50,000+","Not sure yet"].map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
             </div>
@@ -97,14 +138,14 @@ export default function RequestQuotePage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
               <div>
                 <label className="form-label">State *</label>
-                <select className="form-select">
+                <select className="form-select" value={form.state} onChange={set("state")}>
                   <option value="">Select your state</option>
                   {US_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
                 </select>
               </div>
-              <div><label className="form-label">City *</label><input placeholder="City" className="form-input" /></div>
-              <div><label className="form-label">ZIP Code *</label><input placeholder="12345" className="form-input" maxLength={5} /></div>
-              <div><label className="form-label">Street Address (optional)</label><input placeholder="Street address" className="form-input" /></div>
+              <div><label className="form-label">City *</label><input placeholder="City" className="form-input" value={form.city} onChange={set("city")} /></div>
+              <div><label className="form-label">ZIP Code *</label><input placeholder="12345" className="form-input" maxLength={5} value={form.zip} onChange={set("zip")} /></div>
+              <div><label className="form-label">Street Address (optional)</label><input placeholder="Street address" className="form-input" value={form.address} onChange={set("address")} /></div>
             </div>
             <div style={{ display: "flex", gap: "1rem", marginTop: "2rem" }}>
               <button className="btn-secondary" onClick={() => setStep(1)} style={{ flex: 1 }}>← Back</button>
@@ -116,20 +157,22 @@ export default function RequestQuotePage() {
         {step === 3 && (
           <div className="card" style={{ padding: "2.5rem" }}>
             <h2 style={{ fontWeight: 700, fontSize: "1.375rem", color: "var(--navy)", marginBottom: "2rem" }}>Your Contact Information</h2>
+            {error && (
+              <div style={{ background: "rgba(199,25,26,0.08)", border: "1px solid rgba(199,25,26,0.2)", borderRadius: "var(--radius-sm)", padding: "0.75rem 1rem", marginBottom: "1.25rem", fontSize: "0.875rem", color: "var(--red)" }}>
+                {error}
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <div><label className="form-label">First Name *</label><input placeholder="John" className="form-input" /></div>
-                <div><label className="form-label">Last Name *</label><input placeholder="Smith" className="form-input" /></div>
+                <div><label className="form-label">First Name *</label><input placeholder="John" className="form-input" value={form.firstName} onChange={set("firstName")} /></div>
+                <div><label className="form-label">Last Name *</label><input placeholder="Smith" className="form-input" value={form.lastName} onChange={set("lastName")} /></div>
               </div>
-              <div><label className="form-label">Email Address *</label><input type="email" placeholder="john@example.com" className="form-input" /></div>
-              <div><label className="form-label">Phone Number *</label><input type="tel" placeholder="+1 (555) 000-0000" className="form-input" /></div>
+              <div><label className="form-label">Email Address *</label><input type="email" placeholder="john@example.com" className="form-input" value={form.email} onChange={set("email")} /></div>
+              <div><label className="form-label">Phone Number *</label><input type="tel" placeholder="+1 (555) 000-0000" className="form-input" value={form.phone} onChange={set("phone")} /></div>
               <div>
                 <label className="form-label">Best Time to Reach You</label>
-                <select className="form-select">
-                  <option>Morning (8am–12pm)</option>
-                  <option>Afternoon (12pm–5pm)</option>
-                  <option>Evening (5pm–8pm)</option>
-                  <option>Anytime</option>
+                <select className="form-select" value={form.bestTime} onChange={set("bestTime")}>
+                  {["Morning (8am–12pm)","Afternoon (12pm–5pm)","Evening (5pm–8pm)","Anytime"].map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
               <div style={{ background: "var(--gray-50)", borderRadius: "var(--radius)", padding: "1rem", fontSize: "0.8125rem", color: "var(--gray-500)" }}>
@@ -138,8 +181,8 @@ export default function RequestQuotePage() {
             </div>
             <div style={{ display: "flex", gap: "1rem", marginTop: "2rem" }}>
               <button className="btn-secondary" onClick={() => setStep(2)} style={{ flex: 1 }}>← Back</button>
-              <button className="btn-red" onClick={() => setSubmitted(true)} style={{ flex: 2, padding: "1rem" }}>
-                Submit Request — Free
+              <button className="btn-red" onClick={handleSubmit} disabled={loading} style={{ flex: 2, padding: "1rem", opacity: loading ? 0.7 : 1 }}>
+                {loading ? "Submitting..." : "Submit Request — Free"}
               </button>
             </div>
           </div>
