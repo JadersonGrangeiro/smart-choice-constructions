@@ -16,12 +16,14 @@ export async function POST(request: Request) {
     const supabase = createAdminClient();
 
     // Log contact inquiry in audit_logs for admin visibility
-    await supabase.from("audit_logs").insert({
-      action: "contact_form_submitted",
-      entity_type: "contact",
-      entity_id: email,
-      details: { firstName, lastName, email, phone, userType, subject, message: message.slice(0, 200) },
-    }).catch(() => {});
+    try {
+      await supabase.from("audit_logs").insert({
+        action: "contact_form_submitted",
+        entity_type: "contact",
+        entity_id: email,
+        details: { firstName, lastName, email, phone, userType, subject, message: message.slice(0, 200) },
+      });
+    } catch { /* non-critical */ }
 
     // Send email notification to admin
     await sendContactEmail({ firstName, lastName, email, phone, userType, subject, message });

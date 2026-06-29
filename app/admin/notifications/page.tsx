@@ -95,12 +95,13 @@ export default function NotificationsAdminPage() {
           </div>
           <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
             <button className="btn-secondary" onClick={() => {
-              const u = [...notifs, { id: `n${Date.now()}`, ...newNotif, sentAt: null, status: "draft" as const, recipients: 0 }];
+              const u: Notification[] = [...notifs, { id: `n${Date.now()}`, ...newNotif, sentAt: null, status: "draft" as "draft", recipients: 0 }];
               setNotifs(u); persist(u); setShowNew(false);
             }}>Save Draft</button>
             <button className="btn-red" onClick={() => {
               if (!newNotif.title || !newNotif.body) return;
-              const u = [...notifs, { id: `n${Date.now()}`, ...newNotif, sentAt: new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}), status: (newNotif.scheduledFor ? "scheduled" : "sent") as const, recipients: 287 }];
+              const newStatus: "sent" | "scheduled" = newNotif.scheduledFor ? "scheduled" : "sent";
+              const u: Notification[] = [...notifs, { id: `n${Date.now()}`, ...newNotif, sentAt: new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}), status: newStatus, recipients: 287 }];
               setNotifs(u); persist(u); setShowNew(false);
             }}>
               {newNotif.scheduledFor ? "Schedule" : "Send Now"}
