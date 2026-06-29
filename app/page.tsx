@@ -362,6 +362,45 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── LOCAL SUPPLIERS ── */}
+      <section className="section" style={{ background: "white" }}>
+        <div className="container">
+          <Reveal style={{ textAlign: "center", marginBottom: "3rem" }}>
+            <span className="badge badge-blue" style={{ marginBottom: "1rem" }}>Local Supplier Network</span>
+            <h2 className="heading-lg" style={{ color: "var(--navy)", marginBottom: "1rem" }}>
+              Materials, Tools & Equipment — All Local
+            </h2>
+            <p className="text-lg" style={{ color: "var(--gray-500)", maxWidth: "520px", margin: "0 auto" }}>
+              From lumber yards to tile showrooms — find trusted local suppliers for every phase of your project.
+            </p>
+          </Reveal>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: "1.25rem", marginBottom: "2.5rem" }}>
+            {[
+              { icon: "🪵", label: "Building Materials",   href: "/suppliers/categories/building-materials" },
+              { icon: "⚡", label: "Electrical Supplies",  href: "/suppliers/categories/electrical-supplies" },
+              { icon: "🔧", label: "Plumbing Supplies",    href: "/suppliers/categories/plumbing-supplies" },
+              { icon: "🏠", label: "Roofing Supplies",     href: "/suppliers/categories/roofing-supplies" },
+              { icon: "🎨", label: "Paint & Coatings",     href: "/suppliers/categories/paint-coatings" },
+              { icon: "🪟", label: "Windows & Doors",      href: "/suppliers/categories/windows-doors" },
+              { icon: "🔩", label: "Hardware & Tools",     href: "/suppliers/categories/hardware-tools" },
+              { icon: "🌿", label: "Landscaping Supply",   href: "/suppliers/categories/landscaping-supply" },
+            ].map((item, i) => (
+              <Reveal key={i} delay={i * 40}>
+                <Link href={item.href} style={{ display: "flex", alignItems: "center", gap: "0.875rem", padding: "1.125rem 1.25rem", background: "var(--gray-50)", border: "1.5px solid var(--gray-150)", borderRadius: "var(--radius-lg)", textDecoration: "none", color: "var(--gray-700)", fontWeight: 600, fontSize: "0.9375rem", transition: "all 0.2s" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--navy)"; (e.currentTarget as HTMLAnchorElement).style.background = "white"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--gray-150)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--gray-50)"; }}>
+                  <span style={{ fontSize: "1.5rem" }}>{item.icon}</span>
+                  {item.label}
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <Link href="/find-suppliers" className="btn-secondary">Browse All Suppliers →</Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── LOCATIONS ── */}
       <section className="section" style={{ background: "white" }}>
         <div className="container">

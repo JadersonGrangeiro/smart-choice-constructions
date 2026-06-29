@@ -37,8 +37,12 @@ export default function BlogPage() {
         {posts[0] && (
           <div className="card" style={{ overflow: "hidden", marginBottom: "2rem" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }} className="blog-feat-grid">
-              <div style={{ background: "linear-gradient(155deg, var(--navy), #2a3d8f)", minHeight: "240px", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-                <span style={{ fontSize: "5rem" }}>{posts[0].category === "Roofing" ? "🏠" : posts[0].category === "Kitchen" ? "🍳" : posts[0].category === "Bathroom" ? "🛁" : posts[0].category === "HVAC" ? "❄️" : "🔨"}</span>
+              <div style={{ minHeight: "240px", overflow: "hidden", position: "relative" }}>
+                <img
+                  src={(posts[0] as typeof posts[0] & { image?: string }).image ?? "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80"}
+                  alt={posts[0].title}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                />
               </div>
               <div style={{ padding: "2.5rem" }}>
                 <span className="badge badge-blue" style={{ marginBottom: "1rem" }}>{posts[0].category}</span>
@@ -59,8 +63,12 @@ export default function BlogPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))", gap: "1.5rem" }}>
           {posts.slice(1).map(post => (
             <div key={post.id} className="card" style={{ overflow: "hidden" }}>
-              <div style={{ background: "linear-gradient(155deg, var(--navy), #2a3d8f)", height: "150px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3rem" }}>
-                {post.category === "Kitchen" ? "🍳" : post.category === "Bathroom" ? "🛁" : post.category === "HVAC" ? "❄️" : "🏠"}
+              <div style={{ height: "180px", overflow: "hidden" }}>
+                <img
+                  src={(post as typeof post & { image?: string }).image ?? "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80"}
+                  alt={post.title}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
               </div>
               <div style={{ padding: "1.5rem" }}>
                 <span className="badge badge-blue" style={{ marginBottom: "0.875rem", fontSize: "0.75rem" }}>{post.category}</span>

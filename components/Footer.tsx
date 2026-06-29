@@ -7,8 +7,8 @@ import { useI18n } from "@/lib/i18n/context";
 
 export default function Footer() {
   const { t } = useI18n();
-  const topCats = CATEGORIES.slice(0, 20);
-  const topStates = US_STATES.slice(0, 16);
+  const topCats = CATEGORIES.slice(0, 8);
+  const topStates = US_STATES.slice(0, 8);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
@@ -26,7 +26,7 @@ export default function Footer() {
 
       <div style={{ padding: "4rem 0 0" }}>
         <div className="container">
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,1.4fr) repeat(4,1fr)", gap: "2.5rem", paddingBottom: "3rem", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1.6fr) repeat(4,1fr)", gap: "2rem", paddingBottom: "3rem", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
 
             {/* Brand */}
             <div>
@@ -71,13 +71,7 @@ export default function Footer() {
             {/* Services */}
             <div>
               <div className="footer-heading">{t.footer.popularServices}</div>
-              {topCats.slice(0, 10).map(cat => (
-                <Link key={cat.id} href={`/services/${cat.id}`} className="footer-link">{cat.name}</Link>
-              ))}
-            </div>
-            <div>
-              <div className="footer-heading">{t.footer.moreServices}</div>
-              {topCats.slice(10, 20).map(cat => (
+              {topCats.map(cat => (
                 <Link key={cat.id} href={`/services/${cat.id}`} className="footer-link">{cat.name}</Link>
               ))}
               <Link href="/services" className="footer-link" style={{ color: "#60a5fa", fontWeight: 600, marginTop: "0.5rem" }}>
@@ -99,7 +93,7 @@ export default function Footer() {
             {/* Local Suppliers */}
             <div>
               <div className="footer-heading">Local Suppliers</div>
-              {SUPPLIER_CATEGORIES.slice(0, 8).map(cat => (
+              {SUPPLIER_CATEGORIES.slice(0, 6).map(cat => (
                 <Link key={cat.id} href={`/suppliers/categories/${cat.id}`} className="footer-link">
                   {cat.name}
                 </Link>
