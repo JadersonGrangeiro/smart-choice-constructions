@@ -39,6 +39,7 @@ const NAV_GROUPS = [
     label: "Analytics",
     items: [
       { href: "/admin/reports",         icon: "📈", label: "Reports" },
+      { href: "/admin/crm",             icon: "👥", label: "CRM" },
       { href: "/admin/exports",         icon: "⬇️", label: "Exports" },
       { href: "/admin/audit-logs",      icon: "📋", label: "Audit Logs" },
     ],
