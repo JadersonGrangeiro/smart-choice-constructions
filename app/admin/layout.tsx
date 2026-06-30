@@ -50,6 +50,7 @@ const NAV_GROUPS = [
       { href: "/admin/feature-flags",   icon: "🚩", label: "Feature Flags" },
       { href: "/admin/permissions",     icon: "🔐", label: "Permissions" },
       { href: "/admin/admins",          icon: "👑", label: "Admin Accounts" },
+      { href: "/admin/help",            icon: "📖", label: "Help / Manual" },
     ],
   },
 ];

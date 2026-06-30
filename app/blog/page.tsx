@@ -1,13 +1,40 @@
 "use client";
 import Link from "next/link";
 import { BLOG_POSTS } from "@/lib/data";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+type Post = {
+  id: string; slug: string; title: string; category: string;
+  excerpt: string; author: string; date: string; readTime: string;
+  image?: string; published?: boolean;
+};
 
 const cats = ["All","Roofing","Kitchen","Bathroom","HVAC","Electrical","Landscaping"];
 
 export default function BlogPage() {
   const [active, setActive] = useState("All");
-  const posts = active === "All" ? BLOG_POSTS : BLOG_POSTS.filter(p => p.category === active);
+  const [dynamicPosts, setDynamicPosts] = useState<Post[]>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/platform-data?key=blog_posts")
+      .then(r => r.json())
+      .then(json => {
+        const dyn: Post[] = (json.value ?? []).filter((p: Post) => p.published !== false);
+        setDynamicPosts(dyn);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Merge: dynamic overrides static for same slug; new dynamic posts appended
+  const staticSlugs = new Set(BLOG_POSTS.map(p => p.slug));
+  const overrideMap = new Map(dynamicPosts.filter(p => staticSlugs.has(p.slug)).map(p => [p.slug, p]));
+  const newDynamic = dynamicPosts.filter(p => !staticSlugs.has(p.slug));
+  const allPosts: Post[] = [
+    ...(BLOG_POSTS as Post[]).map(p => overrideMap.get(p.slug) ?? p),
+    ...newDynamic,
+  ];
+
+  const posts = active === "All" ? allPosts : allPosts.filter(p => p.category === active);
 
   return (
     <div style={{ paddingTop: "76px" }}>
@@ -33,13 +60,19 @@ export default function BlogPage() {
           ))}
         </div>
 
+        {posts.length === 0 && (
+          <div style={{ textAlign: "center", color: "var(--gray-400)", padding: "4rem 0" }}>
+            No posts in this category yet.
+          </div>
+        )}
+
         {/* Featured */}
         {posts[0] && (
           <div className="card" style={{ overflow: "hidden", marginBottom: "2rem" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }} className="blog-feat-grid">
               <div style={{ minHeight: "240px", overflow: "hidden", position: "relative" }}>
                 <img
-                  src={(posts[0] as typeof posts[0] & { image?: string }).image ?? "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80"}
+                  src={posts[0].image ?? "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80"}
                   alt={posts[0].title}
                   style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
                 />
@@ -65,7 +98,7 @@ export default function BlogPage() {
             <div key={post.id} className="card" style={{ overflow: "hidden" }}>
               <div style={{ height: "180px", overflow: "hidden" }}>
                 <img
-                  src={(post as typeof post & { image?: string }).image ?? "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80"}
+                  src={post.image ?? "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80"}
                   alt={post.title}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />

@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { CATEGORIES, BLOG_POSTS, FAQ_ITEMS } from "@/lib/data";
+import { BLOG_POSTS, FAQ_ITEMS } from "@/lib/data";
 
-type Tab = "blog" | "faq" | "categories";
+type Tab = "blog" | "faq";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 interface BlogPost {
@@ -16,16 +16,9 @@ interface FaqItem {
   category?: string; order: number; active: boolean;
   source?: "static" | "dynamic";
 }
-interface Category {
-  id: string; name: string; icon: string; color: string;
-  description?: string; order: number; active: boolean;
-  source?: "static" | "dynamic";
-}
-
 const BLOG_CATS = ["Roofing","Kitchen","Bathroom","HVAC","Electrical","Landscaping","General"];
 const EMPTY_POST: Partial<BlogPost> = { category: "Roofing", published: true, author: "Smart Choice Editorial", readTime: "5 min", content: "" };
 const EMPTY_FAQ:  Partial<FaqItem>  = { category: "General", active: true, order: 99 };
-const EMPTY_CAT:  Partial<Category> = { icon: "🔧", color: "#162E5E", active: true, order: 99 };
 
 /* ─── Toast ──────────────────────────────────────────────────────────────── */
 function Toast({ msg, type }: { msg: string; type: "success"|"error" }) {
@@ -93,16 +86,15 @@ export default function ContentAdminPage() {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"2rem", flexWrap:"wrap", gap:"1rem" }}>
         <div>
           <h1 style={{ fontSize:"1.625rem", fontWeight:800, color:"var(--navy)", marginBottom:"0.25rem" }}>Content Management</h1>
-          <p style={{ color:"var(--gray-500)", fontSize:"0.875rem" }}>Manage blog posts, FAQ items, and service categories</p>
+          <p style={{ color:"var(--gray-500)", fontSize:"0.875rem" }}>Manage blog posts and FAQ items</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div style={{ display:"flex", gap:0, marginBottom:"1.5rem", background:"white", borderRadius:"var(--radius)", border:"1px solid var(--gray-150)", overflow:"hidden" }}>
         {([
-          { key:"blog",       label:"Blog Posts",  icon:"📝" },
-          { key:"faq",        label:"FAQ",          icon:"❓" },
-          { key:"categories", label:"Categories",   icon:"🔧" },
+          { key:"blog", label:"Blog Posts", icon:"📝" },
+          { key:"faq",  label:"FAQ",        icon:"❓" },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             flex:1, padding:"0.875rem 1.25rem",
@@ -117,9 +109,8 @@ export default function ContentAdminPage() {
         ))}
       </div>
 
-      {tab === "blog"       && <BlogTab       showToast={showToast} />}
-      {tab === "faq"        && <FaqTab        showToast={showToast} />}
-      {tab === "categories" && <CategoriesTab showToast={showToast} />}
+      {tab === "blog" && <BlogTab showToast={showToast} />}
+      {tab === "faq"  && <FaqTab  showToast={showToast} />}
     </div>
   );
 }
@@ -485,150 +476,6 @@ function FaqTab({ showToast }: { showToast:(m:string,t?:"success"|"error")=>void
               <input type="checkbox" checked={form.active??true} onChange={e=>setForm(p=>({...p,active:e.target.checked}))} />
               <span style={{ fontSize:"0.875rem", fontWeight:600 }}>Visible on site</span>
             </label>
-          </div>
-          <div style={{ display:"flex", gap:"0.75rem", marginTop:"1.5rem", justifyContent:"flex-end" }}>
-            <button onClick={() => setShowModal(false)} className="btn-secondary" style={{ padding:"0.75rem 1.5rem" }}>Cancel</button>
-            <button onClick={save} disabled={saving} className="btn-red" style={{ padding:"0.75rem 1.75rem" }}>{saving ? "Saving…" : "Save"}</button>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   CATEGORIES TAB
-═══════════════════════════════════════════════════════════════════════════ */
-function CategoriesTab({ showToast }: { showToast:(m:string,t?:"success"|"error")=>void }) {
-  const [cats, setCats]       = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<Category|null>(null);
-  const [form, setForm]       = useState<Partial<Category>>(EMPTY_CAT);
-  const [saving, setSaving]   = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [search, setSearch]   = useState("");
-
-  const staticCats: Category[] = CATEGORIES.map((c,i) => ({
-    id:c.id, name:c.name, icon:c.icon, color:c.color,
-    order:i, active:true, source:"static" as const,
-  }));
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/platform-data?key=categories_override");
-      const json = await res.json();
-      const overrides: Category[] = (json.value ?? []).map((c: Category) => ({ ...c, source:"dynamic" as const }));
-      const overrideMap = new Map(overrides.map(c=>[c.id,c]));
-      const merged = staticCats.map(c => overrideMap.get(c.id) ?? c);
-      const newCats = overrides.filter(c => !staticCats.some(s=>s.id===c.id));
-      merged.sort((a,b)=>a.order-b.order);
-      setCats([...merged, ...newCats]);
-    } finally { setLoading(false); }
-  }, []); // eslint-disable-line
-
-  useEffect(() => { load(); }, [load]);
-
-  const save = async () => {
-    if (!form.name || !form.icon) { showToast("Name and icon required", "error"); return; }
-    setSaving(true);
-    try {
-      const res0 = await fetch("/api/admin/platform-data?key=categories_override");
-      const j0 = await res0.json();
-      const existing: Category[] = j0.value ?? [];
-      const slug = (form.id ?? form.name!.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,""));
-      const entry: Category = {
-        id: slug, name:form.name!, icon:form.icon!, color:form.color??"#162E5E",
-        description:form.description, order:form.order??99, active:form.active??true, source:"dynamic",
-      };
-      const updated = editing
-        ? existing.map(c => c.id===editing.id ? entry : c)
-        : [...existing, entry];
-      await fetch("/api/admin/platform-data",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:"categories_override",value:updated})});
-      showToast(editing ? "Category updated!" : "Category created!");
-      setShowModal(false); setEditing(null); setForm(EMPTY_CAT);
-      load();
-    } catch { showToast("Save failed","error"); }
-    finally { setSaving(false); }
-  };
-
-  const toggleActive = async (cat: Category) => {
-    const res0 = await fetch("/api/admin/platform-data?key=categories_override");
-    const j0 = await res0.json();
-    const existing: Category[] = j0.value ?? [];
-    const entry: Category = { ...cat, active:!cat.active, source:"dynamic" };
-    const updated = existing.some(c=>c.id===cat.id) ? existing.map(c=>c.id===cat.id?entry:c) : [...existing,entry];
-    await fetch("/api/admin/platform-data",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:"categories_override",value:updated})});
-    showToast(cat.active ? "Category hidden" : "Category visible");
-    load();
-  };
-
-  const openEdit = (cat: Category) => { setForm({...cat}); setEditing(cat); setShowModal(true); };
-  const openNew  = () => { setForm({...EMPTY_CAT}); setEditing(null); setShowModal(true); };
-
-  const filtered = cats.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()));
-
-  return (
-    <div>
-      <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1.25rem", flexWrap:"wrap" }}>
-        <input className="form-input" placeholder="Search categories…" value={search} onChange={e=>setSearch(e.target.value)} style={{ flex:1 }} />
-        <button className="btn-red" onClick={openNew} style={{ padding:"0.75rem 1.25rem", fontSize:"0.875rem" }}>+ Add Category</button>
-      </div>
-      <div className="card" style={{ overflow:"hidden" }}>
-        <table style={{ width:"100%", borderCollapse:"collapse" }}>
-          <thead>
-            <tr style={{ background:"var(--gray-50)", borderBottom:"1px solid var(--gray-150)" }}>
-              {["Icon","Name","Slug","Status","Source","Actions"].map(h=>(
-                <th key={h} style={{ padding:"0.875rem 1rem", textAlign:"left", fontSize:"0.8rem", fontWeight:700, color:"var(--gray-500)" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={6} style={{ padding:"2rem", textAlign:"center", color:"var(--gray-400)" }}>Loading…</td></tr>
-            ) : filtered.map((cat,i) => (
-              <tr key={cat.id} style={{ borderBottom: i<filtered.length-1 ? "1px solid var(--gray-50)" : "none", opacity: cat.active ? 1 : 0.5 }}>
-                <td style={{ padding:"0.875rem 1rem", fontSize:"1.5rem" }}>{cat.icon}</td>
-                <td style={{ padding:"0.875rem 1rem", fontWeight:600, color:"var(--navy)", fontSize:"0.9rem" }}>{cat.name}</td>
-                <td style={{ padding:"0.875rem 1rem" }}>
-                  <code style={{ background:"var(--gray-100)", padding:"2px 6px", borderRadius:"4px", fontSize:"0.75rem", color:"var(--gray-600)" }}>{cat.id}</code>
-                </td>
-                <td style={{ padding:"0.875rem 1rem" }}>
-                  <span style={{ background: cat.active ? "rgba(22,163,74,0.1)" : "var(--gray-100)", color: cat.active ? "#16a34a" : "var(--gray-500)", padding:"2px 8px", borderRadius:"999px", fontSize:"0.75rem", fontWeight:700 }}>
-                    {cat.active ? "Active" : "Hidden"}
-                  </span>
-                </td>
-                <td style={{ padding:"0.875rem 1rem" }}>
-                  <span style={{ fontSize:"0.7rem", color:"var(--gray-400)", background:"var(--gray-50)", padding:"1px 6px", borderRadius:"4px" }}>
-                    {cat.source === "dynamic" ? "custom" : "static"}
-                  </span>
-                </td>
-                <td style={{ padding:"0.875rem 1rem" }}>
-                  <div style={{ display:"flex", gap:"0.375rem" }}>
-                    <button onClick={() => openEdit(cat)} style={{ padding:"0.3rem 0.625rem", background:"rgba(99,102,241,0.08)", border:"1px solid rgba(99,102,241,0.2)", borderRadius:"4px", fontSize:"0.75rem", fontWeight:600, cursor:"pointer", color:"#6366f1", fontFamily:"inherit" }}>Edit</button>
-                    <button onClick={() => toggleActive(cat)} style={{ padding:"0.3rem 0.625rem", background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.2)", borderRadius:"4px", fontSize:"0.75rem", fontWeight:600, cursor:"pointer", color:"#d97706", fontFamily:"inherit" }}>{cat.active?"Hide":"Show"}</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {showModal && (
-        <Modal title={editing ? `Edit: ${editing.name}` : "New Category"} onClose={() => { setShowModal(false); setEditing(null); }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
-            <F label="Name *" span><Input value={form.name??""} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Kitchen Remodeling" /></F>
-            <F label="Icon (emoji) *"><Input value={form.icon??""} onChange={e=>setForm(p=>({...p,icon:e.target.value}))} placeholder="🍳" style={{ fontSize:"1.25rem" }} /></F>
-            <F label="Color (hex)"><Input value={form.color??""} onChange={e=>setForm(p=>({...p,color:e.target.value}))} type="color" style={{ height:"42px", padding:"4px 8px" }} /></F>
-            <F label="Order (lower = first)"><Input type="number" value={form.order??99} onChange={e=>setForm(p=>({...p,order:+e.target.value}))} /></F>
-            <F label="Description" span><Input value={form.description??""} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="Brief description of this category" /></F>
-            <F label="Status">
-              <label style={{ display:"flex", alignItems:"center", gap:"0.5rem", cursor:"pointer", paddingTop:"0.5rem" }}>
-                <input type="checkbox" checked={form.active??true} onChange={e=>setForm(p=>({...p,active:e.target.checked}))} />
-                <span style={{ fontSize:"0.875rem", fontWeight:600 }}>Active (visible on site)</span>
-              </label>
-            </F>
           </div>
           <div style={{ display:"flex", gap:"0.75rem", marginTop:"1.5rem", justifyContent:"flex-end" }}>
             <button onClick={() => setShowModal(false)} className="btn-secondary" style={{ padding:"0.75rem 1.5rem" }}>Cancel</button>

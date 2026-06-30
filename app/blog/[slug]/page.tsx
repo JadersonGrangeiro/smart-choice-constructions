@@ -2,14 +2,46 @@ import Link from "next/link";
 import { BLOG_POSTS } from "@/lib/data";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { createAdminClient } from "@/lib/supabase/server";
 
+export const dynamicParams = true;
+
+/* ─── Types ──────────────────────────────────────────────────────────────── */
+type DynPost = {
+  id: string; slug: string; title: string; category: string;
+  excerpt: string; content: string; image: string;
+  author: string; date: string; readTime: string; published: boolean;
+};
+
+type StaticPost = typeof BLOG_POSTS[number] & { image?: string };
+
+/* ─── Fetch dynamic post from platform_settings ──────────────────────────── */
+async function getDynamicPost(slug: string): Promise<DynPost | null> {
+  try {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "blog_posts")
+      .single();
+    if (!data?.value) return null;
+    const posts: DynPost[] = JSON.parse(data.value);
+    return posts.find(p => p.slug === slug && p.published !== false) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/* ─── Static params (pre-render known slugs) ─────────────────────────────── */
 export async function generateStaticParams() {
   return BLOG_POSTS.map(p => ({ slug: p.slug }));
 }
 
+/* ─── Metadata ───────────────────────────────────────────────────────────── */
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const post = BLOG_POSTS.find(p => p.slug === slug);
+  const static_ = BLOG_POSTS.find(p => p.slug === slug) as StaticPost | undefined;
+  const post = static_ ?? await getDynamicPost(slug);
   if (!post) return {};
   return {
     title: post.title,
@@ -19,11 +51,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description: post.excerpt,
       type: "article",
       authors: [post.author],
-      publishedTime: post.date,
     },
   };
 }
 
+/* ─── Static article content ─────────────────────────────────────────────── */
 const CONTENT: Record<string, { intro: string; sections: { heading: string; body: string }[] }> = {
   "signs-you-need-new-roof": {
     intro: "Most homeowners don't think about their roof until water is dripping through the ceiling. By then, what could have been a $500 repair has turned into a $15,000 replacement. Here are the warning signs worth catching early.",
@@ -78,40 +110,39 @@ const CONTENT: Record<string, { intro: string; sections: { heading: string; body
       { heading: "3. Your panel is 25 or more years old", body: "Standard circuit breakers are rated for 20,000 to 100,000 operations over their lifetime. In a panel that's 25 or 30 years old, many of those operations have already happened. Breakers that have aged past their rated life may fail to trip when they should — which is far more dangerous than one that trips too often. Additionally, certain manufacturers produced panels through the 1970s and 1990s that are now known to be defective and are flagged by insurance companies and home inspectors nationwide. If your panel is more than two decades old, have it inspected regardless of how it appears to be performing." },
       { heading: "4. Lights flicker or dim when appliances cycle on", body: "When your lights dim every time the refrigerator compressor kicks on, or the overhead light in the kitchen flickers when the microwave runs, the panel is struggling to maintain stable voltage across circuits. This happens when the panel is drawing close to its capacity limit. Lights and sensitive electronics can sustain damage from sustained voltage fluctuations over time. Flickering also points to deteriorating grounding and neutral connections inside the panel — a condition that requires professional evaluation before it worsens." },
       { heading: "5. You smell burning or see scorch marks near the panel", body: "Any burning smell coming from your electrical panel is an emergency. Shut off the main breaker and call a licensed electrician immediately — not tomorrow, now. Burning odors indicate that wiring insulation is melting or arcing is occurring inside the enclosure. These conditions precede electrical fires. Similarly, any scorch marks, blackening around breaker slots, or melted plastic visible inside the panel door mean the same thing: the panel is failing and needs immediate replacement. There is no safe way to defer this." },
-      { heading: "What a panel upgrade actually involves", body: "A panel upgrade means removing the existing panel, installing a new main breaker panel at the correct amperage, rewiring the circuits to the new enclosure, and verifying the grounding and bonding. Most jobs take a licensed electrician one to two days. A permit is required in every jurisdiction and triggers at least one inspection by your local building department after the work is complete. Costs vary significantly by region and panel size, but a 200-amp upgrade typically runs $1,500 to $4,000 all-in, including labor, materials, and permit fees. On Smart Choice, you can connect with licensed electricians in your area who specialize in panel upgrades and coordinate directly with your utility company." },
+      { heading: "What a panel upgrade actually involves", body: "A panel upgrade means removing the existing panel, installing a new main breaker panel at the correct amperage, rewiring the circuits to the new enclosure, and verifying the grounding and bonding. Most jobs take a licensed electrician one to two days. A permit is required in every jurisdiction and triggers at least one inspection by your local building department after the work is complete. Costs vary significantly by region and panel size, but a 200-amp upgrade typically runs $1,500 to $4,000 all-in, including labor, materials, and permit fees." },
     ],
   },
   "ev-charger-installation-guide": {
-    intro: "Electric vehicle ownership in the United States has passed 10 million and continues to accelerate. Most EV owners charge primarily at home — and for good reason: home charging is cheaper per mile, more convenient, and lets you start every day with a full battery. But a home EV charger installation involves more than running an extension cord. There's panel capacity to evaluate, wiring to run, permits to pull, and an equipment choice that will affect your daily driving for years.",
+    intro: "Electric vehicle ownership in the United States has passed 10 million and continues to accelerate. Most EV owners charge primarily at home — and for good reason: home charging is cheaper per mile, more convenient, and lets you start every day with a full battery. But a home EV charger installation involves more than running an extension cord.",
     sections: [
-      { heading: "Level 1 vs. Level 2: the real difference", body: "Every EV comes with a Level 1 charging cable that plugs into a standard 120V outlet. This is the slowest option: most EVs gain roughly 3 to 5 miles of range per hour of charging. For a short commute or a plug-in hybrid, Level 1 may be adequate. For a long-range EV with an 80kWh+ battery, Level 1 alone isn't practical — a fully depleted battery could take 40 hours or more to top off. Level 2 charging operates on 240V — the same voltage as a dryer or electric range — and delivers 20 to 60 miles of range per hour depending on the charger's amperage. For the vast majority of homeowners with a full battery EV, Level 2 is the right choice." },
-      { heading: "What your panel can handle — and what it can't", body: "A Level 2 home charger typically requires a dedicated 40-amp or 50-amp circuit on a 240V branch. Before any equipment is ordered, an electrician needs to assess your panel's available capacity. A 100-amp panel serving a home near its load limit may not have room for an EV circuit without upgrading the panel first. A 200-amp panel with available breaker slots can usually accommodate the circuit directly. The electrician will look at your total load calculation, available breaker positions, and whether the service entrance cable can handle the additional continuous draw." },
-      { heading: "Permits and utility coordination", body: "EV charger installation requires a permit in virtually every jurisdiction in the United States. The permit process involves a plan review and at least one inspection by a licensed electrical inspector after the work is complete. Some utilities also require advance notification when significant new electrical loads are added to their grid — particularly for chargers at 48 amps and above that may affect transformer capacity in older neighborhoods. Your electrician should handle the permit application and schedule the inspection. If they suggest skipping the permit, that's a red flag for both code compliance and your homeowner's insurance." },
-      { heading: "Choosing the right charging equipment", body: "The charger unit itself is called an EVSE (Electric Vehicle Supply Equipment). Key specs to evaluate: amperage output (most homes benefit from a 32A or 48A unit), cable length (18 to 25 feet covers most garage configurations), smart features like scheduling and energy monitoring via app, and weatherproofing if outdoor installation is planned. Major brands include ChargePoint, Grizzl-E, JuiceBox, and Tesla's Wall Connector. For non-Tesla vehicles, confirm NACS or J1772 connector compatibility depending on your vehicle model and year. For most homeowners, a 48-amp Level 2 charger on a 60-amp dedicated circuit is the right specification for current and future needs." },
-      { heading: "Garage vs. exterior installation", body: "Most homeowners install the EVSE in the garage, as close to the vehicle's charge port as possible. If garage access isn't available, weatherproof exterior installations on an exterior wall or a dedicated post are standard practice. The key cost driver is distance: the further the new circuit needs to run from the panel, the higher the installation cost, since longer wire runs require larger conductor gauge to prevent voltage drop. If the panel is on the opposite side of the house from the garage, costs can double or triple compared to a short run. An electrician will assess the optimal path and provide options with pricing." },
-      { heading: "What to expect on installation day", body: "A straightforward installation — panel has capacity, charger mounts near the panel, short wire run — typically costs $800 to $1,500 all-in including equipment, labor, and permit fees. Costs rise with panel upgrade requirements, long wire runs, conduit through finished walls, or trenching for exterior conduit paths. On the day of installation, the electrician will run the circuit, mount and wire the EVSE, restore power, and test the charging function. After the building inspection passes, you're authorized to charge. The majority of standard installations complete in a single day. On Smart Choice, you can find licensed electricians in your area who specialize in EV installations and can provide same-week scheduling." },
+      { heading: "Level 1 vs. Level 2: the real difference", body: "Every EV comes with a Level 1 charging cable that plugs into a standard 120V outlet. This is the slowest option: most EVs gain roughly 3 to 5 miles of range per hour of charging. For a short commute or a plug-in hybrid, Level 1 may be adequate. For a long-range EV with an 80kWh+ battery, Level 1 alone isn't practical — a fully depleted battery could take 40 hours or more to top off. Level 2 charging operates on 240V — the same voltage as a dryer or electric range — and delivers 20 to 60 miles of range per hour." },
+      { heading: "What your panel can handle — and what it can't", body: "A Level 2 home charger typically requires a dedicated 40-amp or 50-amp circuit on a 240V branch. Before any equipment is ordered, an electrician needs to assess your panel's available capacity. A 100-amp panel serving a home near its load limit may not have room for an EV circuit without upgrading the panel first. A 200-amp panel with available breaker slots can usually accommodate the circuit directly." },
+      { heading: "Permits and utility coordination", body: "EV charger installation requires a permit in virtually every jurisdiction in the United States. The permit process involves a plan review and at least one inspection by a licensed electrical inspector after the work is complete. Some utilities also require advance notification when significant new electrical loads are added. Your electrician should handle the permit application and schedule the inspection." },
+      { heading: "Choosing the right charging equipment", body: "The charger unit itself is called an EVSE (Electric Vehicle Supply Equipment). Key specs: amperage output (most homes benefit from a 32A or 48A unit), cable length (18 to 25 feet covers most garage configurations), smart features like scheduling and energy monitoring via app, and weatherproofing if outdoor installation is planned. Major brands include ChargePoint, Grizzl-E, JuiceBox, and Tesla's Wall Connector." },
+      { heading: "What to expect on installation day", body: "A straightforward installation typically costs $800 to $1,500 all-in including equipment, labor, and permit fees. Costs rise with panel upgrade requirements, long wire runs, conduit through finished walls, or trenching for exterior conduit paths. The majority of standard installations complete in a single day." },
     ],
   },
   "backyard-renovation-budget-planning": {
-    intro: "A well-planned backyard renovation can fundamentally change how you use your home — extending living space outdoors, adding a destination for family and guests, and delivering measurable value at resale. But without a clear plan, it's easy to spend money in the wrong order and end up with a space that feels unfinished despite significant investment. Whether you have $5,000 or $75,000, the planning process is the same: define how you want to use the space, work backward to the elements that support that use, and sequence the work so each phase builds correctly on the last.",
+    intro: "A well-planned backyard renovation can fundamentally change how you use your home — extending living space outdoors, adding a destination for family and guests, and delivering measurable value at resale. But without a clear plan, it's easy to spend money in the wrong order.",
     sections: [
-      { heading: "Define your primary use case before anything else", body: "Before you talk to a contractor or look at a single material sample, answer one question: what do you actually want to do back there? A family with young children has different needs than a couple who entertains frequently, which is entirely different from a homeowner who wants a low-maintenance retreat. Your use case determines everything — the hardscape footprint, the plant selection, the furniture scale, the lighting requirements, and the irrigation design. Write it down in one or two sentences before any planning conversation, because every contractor will ask and your answer will shape the entire scope and budget." },
-      { heading: "Separate baseline work from aspirational features", body: "Most successful backyard renovations happen in phases. Start by identifying what's a baseline requirement — drainage correction, grading issues, removal of overgrown landscape, or a failing retaining wall — versus what's aspirational, like an outdoor kitchen, fire pit, or pergola. Phase one should always address site problems first and create the foundational hardscape. Phase two adds features that extend your usable season or serve entertainment needs. Phase three is finish work: lighting, planting, furniture, and accessories. This prevents the most common mistake in backyard projects — installing a beautiful deck before fixing a drainage problem that will eventually rot the framing." },
-      { heading: "Where your budget actually goes", body: "Labor typically represents 40 to 60 percent of a landscaping or hardscape project. Materials for a well-built project aren't cheap: concrete pavers, quality lumber, irrigation components, and established plants all add up quickly. Where homeowners waste money: impulse additions mid-project that weren't in the original scope, low-grade materials that need replacement within five years, and skipping site prep to reduce the initial bid. Where homeowners save wisely: choosing durable over premium where it's aesthetically equivalent (stamped concrete versus natural stone, pressure-treated lumber versus cedar), buying plants in fall when nurseries discount for end-of-season clearance, and phasing the work over two seasons rather than borrowing to fund it all at once." },
-      { heading: "Understand permit requirements before you break ground", body: "Many common backyard improvements require building permits. Decks above a certain height from grade, swimming pools and spas, pergolas with electrical, retaining walls above a specific height threshold, and detached structures all typically require permits with inspections at multiple stages. The specific thresholds vary by municipality — in some cities, a deck over 12 inches off grade needs a permit; in others, 30 inches is the threshold. Your contractor should know your local requirements and handle the permit process. Unpermitted work can complicate a sale and may need to be demolished or brought into compliance at your expense years later when a buyer's inspector flags it." },
-      { heading: "How to evaluate and compare contractors", body: "For backyard renovations, you typically need a landscape contractor for plants, grading, and irrigation, and possibly a separate hardscape or deck contractor depending on the scope. The most important step in contractor selection is asking for references from similar projects — not testimonials on a website, but actual homeowners you call directly and ask specifically about the project sequence, how change orders were handled, and whether the contractor communicated proactively when problems arose. Request a detailed written scope before comparing quotes: two bids for 'a patio and some landscaping' may describe entirely different scopes and specifications. The cheapest bid should prompt questions, not just excitement." },
-      { heading: "Final checklist before you start", body: "A few things consistently make backyard renovations go smoother: discuss drainage in detail before work begins, confirm material selections and availability before signing a contract (pavers and specific lumber species can have extended lead times), and establish a payment schedule tied to milestones rather than dates. Leave a 10 to 15 percent contingency in your budget for unexpected site conditions — especially on older properties where buried irrigation conflicts, old concrete, or grading surprises are common. On Smart Choice, you can browse local landscaping and hardscape contractors with real reviews from homeowners who've completed similar projects." },
+      { heading: "Define your primary use case before anything else", body: "Before you talk to a contractor or look at a single material sample, answer one question: what do you actually want to do back there? A family with young children has different needs than a couple who entertains frequently. Your use case determines everything — the hardscape footprint, the plant selection, the furniture scale, the lighting requirements, and the irrigation design." },
+      { heading: "Separate baseline work from aspirational features", body: "Most successful backyard renovations happen in phases. Start by identifying what's a baseline requirement — drainage correction, grading issues, removal of overgrown landscape, or a failing retaining wall — versus what's aspirational, like an outdoor kitchen, fire pit, or pergola. Phase one should always address site problems first and create the foundational hardscape." },
+      { heading: "Where your budget actually goes", body: "Labor typically represents 40 to 60 percent of a landscaping or hardscape project. Where homeowners waste money: impulse additions mid-project that weren't in the original scope, low-grade materials that need replacement within five years, and skipping site prep to reduce the initial bid." },
+      { heading: "Understand permit requirements before you break ground", body: "Many common backyard improvements require building permits. Decks above a certain height from grade, swimming pools and spas, pergolas with electrical, retaining walls above a specific height threshold, and detached structures all typically require permits with inspections. Your contractor should know your local requirements and handle the permit process." },
+      { heading: "How to evaluate and compare contractors", body: "For backyard renovations, you typically need a landscape contractor for plants, grading, and irrigation. The most important step in contractor selection is asking for references from similar projects — not testimonials on a website, but actual homeowners you call directly." },
+      { heading: "Final checklist before you start", body: "Discuss drainage in detail before work begins, confirm material selections and availability before signing a contract, and establish a payment schedule tied to milestones. Leave a 10 to 15 percent contingency in your budget for unexpected site conditions — especially on older properties where buried irrigation conflicts or old concrete are common." },
     ],
   },
   "low-maintenance-landscaping-plants": {
-    intro: "The biggest mistake homeowners make when landscaping is choosing plants that look beautiful in the nursery but demand constant attention to survive in their actual climate. Low-maintenance landscaping isn't about bare mulch and rock — it's about choosing the right plants for your specific conditions: your soil type, sun exposure, average rainfall, and local temperature extremes. Every plant listed below performs well across wide geographic areas of the United States with minimal intervention once it's properly established.",
+    intro: "The biggest mistake homeowners make when landscaping is choosing plants that look beautiful in the nursery but demand constant attention to survive in their actual climate. Low-maintenance landscaping isn't about bare mulch and rock — it's about choosing the right plants for your specific conditions.",
     sections: [
-      { heading: "Native ornamental grasses — the backbone of low-care landscapes", body: "Native grasses are the workhorse of no-fuss landscaping. Little Bluestem (Schizachyrium scoparium) is native to most of the eastern and central US, thrives in poor soil and full sun, needs no irrigation once established, and produces striking blue-green summer foliage that turns rust-orange in fall — providing color even after frost. Switch Grass (Panicum virgatum) grows in dense upright clumps to four feet and tolerates flooding, drought, and coastal conditions with equal ease. Karl Foerster Feather Reed Grass performs across zones 4–9, provides dramatic vertical structure, and holds its form through the winter months. All three require nothing more than a single annual cutback in late winter." },
-      { heading: "Coneflowers and black-eyed Susans for reliable color", body: "Purple Coneflower (Echinacea purpurea) is native to the eastern and central US, blooms from June through September, tolerates clay soil and summer drought, and self-seeds reliably over time. Once established, it needs no supplemental irrigation even in dry summers and no deadheading if you prefer a naturalistic look. Black-Eyed Susan (Rudbeckia hirta) is similarly tough — a biennial or short-lived perennial that naturalizes easily, tolerates poor drainage and drought, and provides brilliant yellow color from summer well into fall. Both plants attract pollinators at a time of year when many other flowers have finished, making them valuable ecologically as well as visually." },
-      { heading: "Drought-tolerant shrubs that perform coast to coast", body: "Knock Out Roses are arguably the most important development in residential landscaping of the past quarter century — disease-resistant, repeat-blooming from late spring through frost, cold-hardy to zone 4, and requiring essentially no maintenance beyond a single annual pruning. Spirea (Spiraea japonica) is equally adaptable, blooming in late spring with a dense mounded form that needs no shearing to look tidy and tolerates both drought and clay. For year-round structure, Inkberry Holly (Ilex glabra) is native to the eastern US, provides evergreen presence in all four seasons, tolerates wet conditions that kill most shrubs, and maintains a clean shape without pruning. These three alone can form the backbone of a landscape that performs well for decades." },
-      { heading: "Ground covers to replace high-maintenance lawn", body: "Lawn is the most labor-intensive element in most residential landscapes: it requires mowing every one to two weeks, irrigation during dry periods, fertilizing, aerating, and reseeding each season. For areas with light foot traffic, creeping thyme (Thymus serpyllum) is an outstanding alternative — it tolerates drought, spreads reliably to fill gaps, and produces a carpet of small purple flowers in early summer. Liriope (monkey grass) forms dense no-mow borders in zones 4–10 and tolerates both full shade and dry conditions better than almost any other ground cover. Blue Star Creeper (Isotoma fluviatilis) works beautifully between stepping stones in warm climates. Each of these saves significant time and water annually compared to conventional turf." },
-      { heading: "Trees that provide value without constant maintenance", body: "The right tree, planted in the right location, is the highest-value landscaping investment you can make. Mature trees provide shade that measurably reduces cooling costs, increase property value by up to 15 percent, and create visual structure that ties an entire landscape together. Service Berry (Amelanchier canadensis) is native to the eastern US, provides four-season interest through spring flowers, early-summer berries, outstanding fall color, and distinctive winter bark — all in a 15–20 foot tree that won't conflict with power lines. River Birch (Betula nigra) is native across most of the country east of the Rockies, tolerates wet soil, and resists the bronze birch borer beetle that kills white-barked species. Both trees need zero supplemental care once established in appropriate soil." },
-      { heading: "Working with a landscaping contractor on plant selection", body: "A skilled landscaping contractor will assess your soil composition, drainage patterns, and sun exposure before recommending any specific plants — not the other way around. Be cautious of any contractor who proposes a plant list without first walking your property and evaluating your specific site conditions, since even native plants fail when placed incorrectly. Ask specifically about native species for your region: they're typically better adapted to local rainfall patterns and temperature swings, require less maintenance over time, and support local pollinators and wildlife. Always request a written plant list with the botanical name in addition to the common name, the size at installation, and the expected size at full maturity. This protects you from substitutions and gives you a reference document for the long life of your landscape." },
+      { heading: "Native ornamental grasses — the backbone of low-care landscapes", body: "Native grasses are the workhorse of no-fuss landscaping. Little Bluestem (Schizachyrium scoparium) is native to most of the eastern and central US, thrives in poor soil and full sun, needs no irrigation once established, and produces striking blue-green summer foliage that turns rust-orange in fall. Switch Grass (Panicum virgatum) grows in dense upright clumps to four feet and tolerates flooding, drought, and coastal conditions with equal ease." },
+      { heading: "Coneflowers and black-eyed Susans for reliable color", body: "Purple Coneflower (Echinacea purpurea) is native to the eastern and central US, blooms from June through September, tolerates clay soil and summer drought, and self-seeds reliably over time. Black-Eyed Susan (Rudbeckia hirta) is similarly tough — a biennial or short-lived perennial that naturalizes easily, tolerates poor drainage and drought, and provides brilliant yellow color from summer well into fall." },
+      { heading: "Drought-tolerant shrubs that perform coast to coast", body: "Knock Out Roses are arguably the most important development in residential landscaping of the past quarter century — disease-resistant, repeat-blooming from late spring through frost, cold-hardy to zone 4, and requiring essentially no maintenance beyond a single annual pruning. Spirea (Spiraea japonica) is equally adaptable, blooming in late spring with a dense mounded form that needs no shearing to look tidy." },
+      { heading: "Ground covers to replace high-maintenance lawn", body: "Lawn is the most labor-intensive element in most residential landscapes: it requires mowing every one to two weeks, irrigation during dry periods, fertilizing, aerating, and reseeding each season. For areas with light foot traffic, creeping thyme (Thymus serpyllum) is an outstanding alternative — it tolerates drought, spreads reliably to fill gaps, and produces a carpet of small purple flowers in early summer." },
+      { heading: "Trees that provide value without constant maintenance", body: "The right tree, planted in the right location, is the highest-value landscaping investment you can make. Service Berry (Amelanchier canadensis) is native to the eastern US, provides four-season interest through spring flowers, early-summer berries, outstanding fall color, and distinctive winter bark. River Birch (Betula nigra) is native across most of the country east of the Rockies, tolerates wet soil, and resists the bronze birch borer beetle." },
+      { heading: "Working with a landscaping contractor on plant selection", body: "A skilled landscaping contractor will assess your soil composition, drainage patterns, and sun exposure before recommending any specific plants. Be cautious of any contractor who proposes a plant list without first walking your property and evaluating your specific site conditions. Always request a written plant list with the botanical name in addition to the common name, the size at installation, and the expected size at full maturity." },
     ],
   },
 };
@@ -128,61 +159,97 @@ function Stars({ count }: { count: number }) {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAGE
+═══════════════════════════════════════════════════════════════════════════ */
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = BLOG_POSTS.find(p => p.slug === slug);
-  if (!post) notFound();
 
-  const content = CONTENT[slug] ?? {
-    intro: post.excerpt,
-    sections: [
-      { heading: "About this topic", body: "Our network of professional contractors has compiled practical guidance on this subject. The information below is drawn from real-world experience across thousands of projects." },
-      { heading: "Getting the right help", body: "Whatever your project involves, the most important decision is who you hire. Verify licenses, check insurance, read reviews from real homeowners in your area, and get at least two quotes before committing. Smart Choice makes all of this straightforward." },
-    ],
-  };
+  const staticPost = BLOG_POSTS.find(p => p.slug === slug) as StaticPost | undefined;
+  let dynPost: DynPost | null = null;
 
-  const related = BLOG_POSTS.filter(p => p.slug !== slug).slice(0, 3);
+  if (!staticPost) {
+    dynPost = await getDynamicPost(slug);
+    if (!dynPost) notFound();
+  }
+
+  const post = (staticPost ?? dynPost)!;
+
+  // Build content object — static posts use CONTENT map, dynamic use content field
+  const content = staticPost
+    ? (CONTENT[slug] ?? { intro: post.excerpt, sections: [{ heading: "About this topic", body: post.excerpt }] })
+    : buildDynamicContent(dynPost!);
+
+  const image = (post as StaticPost).image ?? (dynPost?.image);
+  const related = BLOG_POSTS.filter(p => p.slug !== slug).slice(0, 3) as StaticPost[];
   const categoryService = post.category.toLowerCase().replace(/\s+/g, "-");
 
   return (
     <div style={{ paddingTop: "76px" }}>
       {/* Hero */}
-      <div style={{ background: "linear-gradient(155deg, var(--navy-dark), var(--navy))", padding: "4rem 0 3rem" }}>
-        <div className="container-narrow">
-          <nav aria-label="Breadcrumb" style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", fontSize: "0.875rem", color: "rgba(255,255,255,0.5)", flexWrap: "wrap" }}>
-            <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>Home</Link>
-            <span>/</span>
-            <Link href="/blog" style={{ color: "inherit", textDecoration: "none" }}>Blog</Link>
-            <span>/</span>
-            <span style={{ color: "rgba(255,255,255,0.8)" }}>{post.category}</span>
-          </nav>
-          <span className="badge badge-white" style={{ marginBottom: "1.25rem" }}>{post.category}</span>
-          <h1 className="heading-lg" style={{ color: "white", marginBottom: "1.25rem" }}>{post.title}</h1>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", color: "rgba(255,255,255,0.55)", fontSize: "0.875rem", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <div style={{ width: "32px", height: "32px", background: "rgba(255,255,255,0.12)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "white", fontSize: "0.875rem" }}>
-                {post.author.charAt(0)}
+      {image && (
+        <div style={{ height: "340px", overflow: "hidden", position: "relative" }}>
+          <img src={image} alt={post.title} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(13,31,64,0.55), rgba(13,31,64,0.82))" }} />
+          <div className="container-narrow" style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", paddingBottom: "2.5rem" }}>
+            <nav aria-label="Breadcrumb" style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", fontSize: "0.875rem", color: "rgba(255,255,255,0.5)", flexWrap: "wrap" }}>
+              <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>Home</Link>
+              <span>/</span>
+              <Link href="/blog" style={{ color: "inherit", textDecoration: "none" }}>Blog</Link>
+              <span>/</span>
+              <span style={{ color: "rgba(255,255,255,0.8)" }}>{post.category}</span>
+            </nav>
+            <span className="badge badge-white" style={{ marginBottom: "1rem", display: "inline-block", width: "fit-content" }}>{post.category}</span>
+            <h1 className="heading-lg" style={{ color: "white", marginBottom: "1rem" }}>{post.title}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", color: "rgba(255,255,255,0.55)", fontSize: "0.875rem", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div style={{ width: "32px", height: "32px", background: "rgba(255,255,255,0.12)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "white", fontSize: "0.875rem" }}>
+                  {post.author.charAt(0)}
+                </div>
+                <span>{post.author}</span>
               </div>
-              <span>{post.author}</span>
+              <span>·</span>
+              <span>{post.date}</span>
+              <span>·</span>
+              <span>{post.readTime}</span>
             </div>
-            <span>·</span>
-            <span>{post.date}</span>
-            <span>·</span>
-            <span>{post.readTime}</span>
           </div>
         </div>
-      </div>
+      )}
+
+      {!image && (
+        <div style={{ background: "linear-gradient(155deg, var(--navy-dark), var(--navy))", padding: "4rem 0 3rem" }}>
+          <div className="container-narrow">
+            <nav aria-label="Breadcrumb" style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", fontSize: "0.875rem", color: "rgba(255,255,255,0.5)", flexWrap: "wrap" }}>
+              <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>Home</Link>
+              <span>/</span>
+              <Link href="/blog" style={{ color: "inherit", textDecoration: "none" }}>Blog</Link>
+              <span>/</span>
+              <span style={{ color: "rgba(255,255,255,0.8)" }}>{post.category}</span>
+            </nav>
+            <span className="badge badge-white" style={{ marginBottom: "1.25rem" }}>{post.category}</span>
+            <h1 className="heading-lg" style={{ color: "white", marginBottom: "1.25rem" }}>{post.title}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", color: "rgba(255,255,255,0.55)", fontSize: "0.875rem", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div style={{ width: "32px", height: "32px", background: "rgba(255,255,255,0.12)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "white", fontSize: "0.875rem" }}>
+                  {post.author.charAt(0)}
+                </div>
+                <span>{post.author}</span>
+              </div>
+              <span>·</span><span>{post.date}</span><span>·</span><span>{post.readTime}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="container-narrow" style={{ padding: "3rem 1.5rem" }}>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "3rem", alignItems: "start" }}>
           {/* Article */}
           <article>
-            {/* Intro */}
             <p style={{ fontSize: "1.125rem", color: "var(--gray-700)", lineHeight: 1.85, marginBottom: "2.5rem", fontWeight: 500, borderLeft: "4px solid var(--red)", paddingLeft: "1.25rem" }}>
               {content.intro}
             </p>
 
-            {/* Sections */}
             {content.sections.map((section, i) => (
               <div key={i} style={{ marginBottom: "2.25rem" }}>
                 <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--navy)", marginBottom: "0.875rem" }}>
@@ -203,12 +270,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                 Every contractor on Smart Choice is local and professional, with reviews from real homeowners. Getting quotes is free and takes about two minutes.
               </p>
               <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-                <Link href={`/request-quote?service=${categoryService}`} className="btn-white">
-                  Get Free Quotes
-                </Link>
-                <Link href={`/services/${categoryService}`} className="btn-outline-white">
-                  Browse {post.category} Pros
-                </Link>
+                <Link href={`/request-quote?service=${categoryService}`} className="btn-white">Get Free Quotes</Link>
+                <Link href={`/services/${categoryService}`} className="btn-outline-white">Browse {post.category} Pros</Link>
               </div>
             </div>
 
@@ -220,7 +283,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               <div>
                 <div style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "0.375rem" }}>{post.author}</div>
                 <p style={{ fontSize: "0.875rem", color: "var(--gray-500)", lineHeight: 1.65 }}>
-                  Contributing writer at Smart Choice Constructions with expertise in home improvement, contractor selection, and residential construction. Writes based on research and input from licensed professionals in our network.
+                  Contributing writer at Smart Choice Constructions with expertise in home improvement, contractor selection, and residential construction.
                 </p>
               </div>
             </div>
@@ -228,34 +291,27 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
           {/* Sidebar */}
           <aside style={{ position: "sticky", top: "96px", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            {/* Table of contents */}
-            <div className="card" style={{ padding: "1.5rem" }}>
-              <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "1rem", fontSize: "0.9375rem" }}>
-                In This Article
-              </h3>
-              {content.sections.map((s, i) => (
-                <div key={i} style={{ display: "flex", gap: "0.625rem", padding: "0.5rem 0", borderBottom: i < content.sections.length - 1 ? "1px solid var(--gray-50)" : "none" }}>
-                  <span style={{ color: "var(--red)", fontWeight: 700, fontSize: "0.8125rem", flexShrink: 0, marginTop: "1px" }}>{i + 1}</span>
-                  <span style={{ fontSize: "0.8125rem", color: "var(--gray-600)", lineHeight: 1.4 }}>{s.heading.replace(/^\d+\.\s/, "")}</span>
-                </div>
-              ))}
-            </div>
+            {content.sections.length > 0 && (
+              <div className="card" style={{ padding: "1.5rem" }}>
+                <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "1rem", fontSize: "0.9375rem" }}>In This Article</h3>
+                {content.sections.map((s, i) => (
+                  <div key={i} style={{ display: "flex", gap: "0.625rem", padding: "0.5rem 0", borderBottom: i < content.sections.length - 1 ? "1px solid var(--gray-50)" : "none" }}>
+                    <span style={{ color: "var(--red)", fontWeight: 700, fontSize: "0.8125rem", flexShrink: 0, marginTop: "1px" }}>{i + 1}</span>
+                    <span style={{ fontSize: "0.8125rem", color: "var(--gray-600)", lineHeight: 1.4 }}>{s.heading.replace(/^\d+\.\s/, "")}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            {/* Quick CTA */}
             <div style={{ background: "var(--navy)", borderRadius: "var(--radius-lg)", padding: "1.5rem", textAlign: "center" }}>
-              <div style={{ fontSize: "1.5rem", marginBottom: "0.75rem" }}>{post.category === "Roofing" ? "🏠" : post.category === "Kitchen" ? "🍳" : post.category === "Bathroom" ? "🛁" : post.category === "HVAC" ? "❄️" : post.category === "Electrical" ? "⚡" : post.category === "Landscaping" ? "🌿" : "🔨"}</div>
-              <h3 style={{ fontWeight: 700, color: "white", marginBottom: "0.625rem", fontSize: "1rem" }}>
-                Find a {post.category} Pro
-              </h3>
-              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.8125rem", marginBottom: "1.25rem", lineHeight: 1.6 }}>
-                Verified contractors. Free quotes. No commitment.
-              </p>
-              <Link href={`/services/${categoryService}`} className="btn-white" style={{ display: "block", fontSize: "0.875rem", padding: "0.75rem 1rem" }}>
-                Browse Contractors
-              </Link>
+              <div style={{ fontSize: "1.5rem", marginBottom: "0.75rem" }}>
+                {post.category === "Roofing" ? "🏠" : post.category === "Kitchen" ? "🍳" : post.category === "Bathroom" ? "🛁" : post.category === "HVAC" ? "❄️" : post.category === "Electrical" ? "⚡" : post.category === "Landscaping" ? "🌿" : "🔨"}
+              </div>
+              <h3 style={{ fontWeight: 700, color: "white", marginBottom: "0.625rem", fontSize: "1rem" }}>Find a {post.category} Pro</h3>
+              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.8125rem", marginBottom: "1.25rem", lineHeight: 1.6 }}>Verified contractors. Free quotes. No commitment.</p>
+              <Link href={`/services/${categoryService}`} className="btn-white" style={{ display: "block", fontSize: "0.875rem", padding: "0.75rem 1rem" }}>Browse Contractors</Link>
             </div>
 
-            {/* Related posts */}
             <div className="card" style={{ padding: "1.5rem" }}>
               <h3 style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "1rem", fontSize: "0.9375rem" }}>Related Articles</h3>
               {related.map(p => (
@@ -273,7 +329,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               ))}
             </div>
 
-            {/* Rating trust signal */}
             <div className="card" style={{ padding: "1.25rem", textAlign: "center" }}>
               <Stars count={5} />
               <div style={{ fontWeight: 800, fontSize: "1.5rem", color: "var(--navy)", margin: "0.5rem 0 0.25rem" }}>4.8</div>
@@ -286,4 +341,27 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       <style>{`.related-post-link:hover div { color: var(--red) !important; }`}</style>
     </div>
   );
+}
+
+/* ─── Build content from free-text dynamic post ──────────────────────────── */
+function buildDynamicContent(post: DynPost): { intro: string; sections: { heading: string; body: string }[] } {
+  if (!post.content?.trim()) {
+    return { intro: post.excerpt, sections: [] };
+  }
+  const paragraphs = post.content.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+  if (paragraphs.length === 0) return { intro: post.excerpt, sections: [] };
+
+  // If there's only one paragraph, show it as intro with no sections
+  if (paragraphs.length === 1) {
+    return { intro: paragraphs[0], sections: [] };
+  }
+
+  // First paragraph = intro; remaining = one "Full Article" section
+  return {
+    intro: paragraphs[0],
+    sections: paragraphs.slice(1).map((body, i) => ({
+      heading: `Part ${i + 1}`,
+      body,
+    })),
+  };
 }

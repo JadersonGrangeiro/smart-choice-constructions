@@ -14,6 +14,7 @@ const ALLOWED_KEYS = [
   "categories_override",
   "crm_contacts",
   "crm_interactions",
+  "locations_config",
 ];
 
 export async function GET(request: Request) {

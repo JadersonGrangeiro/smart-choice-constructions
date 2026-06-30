@@ -163,9 +163,10 @@ export default function CampaignsPage() {
                 </div>
                 {/* Actions */}
                 <div style={{ display: "flex", gap: "0.375rem", flexShrink: 0 }}>
-                  <button style={{ padding: "0.375rem 0.75rem", background: "var(--gray-100)", border: "none", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", color: "var(--gray-700)", fontFamily: "inherit" }}>Edit</button>
+                  <button onClick={() => { const dup = { ...c, id: `cam${Date.now()}`, name: `${c.name} (copy)`, status: "draft" as CampaignStatus, impressions: 0, conversions: 0, revenue: 0 }; const u = [...campaigns, dup]; setCampaigns(u); persist(u); }} style={{ padding: "0.375rem 0.75rem", background: "var(--gray-100)", border: "none", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", color: "var(--gray-700)", fontFamily: "inherit" }}>Duplicate</button>
                   {c.status === "draft" && <button onClick={() => { const u = campaigns.map(x => x.id === c.id ? { ...x, status: "active" as CampaignStatus } : x); setCampaigns(u); persist(u); }} style={{ padding: "0.375rem 0.75rem", background: "rgba(22,163,74,0.1)", color: "#16a34a", border: "none", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Launch</button>}
                   {c.status === "active" && <button onClick={() => { const u = campaigns.map(x => x.id === c.id ? { ...x, status: "ended" as CampaignStatus } : x); setCampaigns(u); persist(u); }} style={{ padding: "0.375rem 0.75rem", background: "rgba(245,158,11,0.1)", color: "#d97706", border: "none", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>End</button>}
+                  <button onClick={() => { if(!confirm("Delete this campaign?")) return; const u = campaigns.filter(x=>x.id!==c.id); setCampaigns(u); persist(u); }} style={{ padding: "0.375rem 0.625rem", background: "rgba(199,25,26,0.06)", color: "var(--red)", border: "1px solid rgba(199,25,26,0.15)", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Del</button>
                 </div>
               </div>
             </div>
