@@ -20,4 +20,4 @@ create index if not exists idx_contractors_availability
 
 create index if not exists idx_suppliers_availability
   on public.suppliers (availability_status)
-  where is_active = true;
+  where status = 'active';
