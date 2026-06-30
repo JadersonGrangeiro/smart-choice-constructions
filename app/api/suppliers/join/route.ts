@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/server";
 import { rateLimit, getIp } from "@/lib/rate-limit";
-import { sendSupplierApplicationEmail } from "@/lib/resend/emails";
+import { getStripe } from "@/lib/stripe/client";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +16,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { company_name, contact_name, email, phone, category, state_code, city, website, description } = body;
 
-    if (!company_name?.trim() || !email?.trim() || !category || !state_code || !city?.trim()) {
+    if (!company_name?.trim() || !email?.trim() || !category || !state_code || !city?.trim() || !contact_name?.trim() || !phone?.trim()) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -25,34 +24,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
     }
 
-    const admin = createAdminClient();
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://smartchoiceconstructions.com";
+    const stripe  = getStripe();
 
-    const { error } = await admin.from("suppliers").insert({
-      company_name: company_name.trim(),
-      category,
-      email:        email.trim().toLowerCase(),
-      phone:        phone?.trim() || null,
-      website:      website?.trim() || null,
-      description:  description?.trim() || null,
-      state_code:   state_code.toUpperCase(),
-      city:         city.trim(),
-      status:       "pending",
+    const customer = await stripe.customers.create({
+      email:    email.trim().toLowerCase(),
+      name:     company_name.trim(),
+      metadata: { type: "supplier", contact_name: contact_name.trim() },
     });
 
-    if (error) throw error;
+    const session = await stripe.checkout.sessions.create({
+      customer:              customer.id,
+      mode:                  "subscription",
+      payment_method_types:  ["card"],
+      line_items: [{ price: process.env.STRIPE_SUPPLIER_PRICE_FIRST_MONTH!, quantity: 1 }],
+      metadata: {
+        type:         "supplier",
+        company_name: company_name.trim(),
+        contact_name: contact_name.trim(),
+        email:        email.trim().toLowerCase(),
+        phone:        phone.trim(),
+        category,
+        state_code:   state_code.toUpperCase(),
+        city:         city.trim(),
+        website:      website?.trim() ?? "",
+        description:  (description?.trim() ?? "").slice(0, 480),
+      },
+      subscription_data: {
+        metadata: { type: "supplier", company_name: company_name.trim() },
+      },
+      success_url:  `${baseUrl}/join/supplier/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:   `${baseUrl}/join/supplier?cancelled=true`,
+      allow_promotion_codes:       true,
+      billing_address_collection:  "required",
+    });
 
-    // Send confirmation to applicant (fire-and-forget)
-    const catLabel = category.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
-    sendSupplierApplicationEmail({
-      to:          email.trim().toLowerCase(),
-      companyName: company_name.trim(),
-      contactName: contact_name?.trim() ?? company_name.trim(),
-      category:    catLabel,
-    }).catch(console.error);
-
-    return NextResponse.json({ ok: true }, { status: 201 });
+    return NextResponse.json({ checkoutUrl: session.url }, { status: 200 });
   } catch (err) {
     console.error("[suppliers/join POST]", err);
-    return NextResponse.json({ error: "Failed to submit application" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to start checkout" }, { status: 500 });
   }
 }

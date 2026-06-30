@@ -17,6 +17,10 @@ export const COMPANY = {
     firstMonth: 29.90,
     monthly: 49.90,
   },
+  supplierPricing: {
+    firstMonth: 14.90,
+    monthly: 29.90,
+  },
 };
 
 export const STATS = [

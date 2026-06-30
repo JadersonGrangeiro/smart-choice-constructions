@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: "Search local building material suppliers, equipment rental companies, and professional services. Browse by category, state, or city.",
   openGraph: {
     title: "Find Local Suppliers | Smart Choice Constructions",
-    description: "Browse local suppliers by category and location. Free for contractors and homeowners.",
+    description: "Browse local suppliers by category and location. Find building materials, equipment, and professional services near you.",
   },
 };
 

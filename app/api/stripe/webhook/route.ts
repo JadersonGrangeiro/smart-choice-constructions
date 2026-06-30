@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/client";
 import { createAdminClient } from "@/lib/supabase/server";
-import { sendWelcomeEmail, sendPaymentFailedEmail, sendSubscriptionCanceledEmail } from "@/lib/resend/emails";
+import { sendWelcomeEmail, sendPaymentFailedEmail, sendSubscriptionCanceledEmail, sendSupplierApplicationEmail } from "@/lib/resend/emails";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +46,48 @@ export async function POST(request: Request) {
       // ── Checkout completed → activate subscription ──────────────────────────
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const sessionType  = session.metadata?.type;
+
+        // ── Supplier checkout ──
+        if (sessionType === "supplier") {
+          const m = session.metadata!;
+          const { error: supplierErr } = await supabase
+            .from("suppliers")
+            .insert({
+              company_name: m.company_name,
+              category:     m.category,
+              email:        m.email,
+              phone:        m.phone || null,
+              website:      m.website || null,
+              description:  m.description || null,
+              state_code:   m.state_code,
+              city:         m.city,
+              status:       "pending_approval",
+            });
+
+          if (!supplierErr) {
+            await sendSupplierApplicationEmail({
+              to:          m.email,
+              companyName: m.company_name,
+              contactName: m.contact_name,
+              category:    m.category,
+            });
+          } else {
+            console.error("[webhook] Failed to insert supplier:", supplierErr);
+          }
+
+          await supabase.from("payment_events").insert({
+            stripe_event_id: event.id,
+            event_type:      event.type,
+            amount_cents:    session.amount_total,
+            currency:        session.currency ?? "usd",
+            status:          "succeeded",
+            raw_payload:     event.data.object as unknown as Record<string, unknown>,
+          });
+          break;
+        }
+
+        // ── Contractor checkout ──
         const contractorId = session.metadata?.contractor_id;
 
         if (!contractorId || session.mode !== "subscription") break;

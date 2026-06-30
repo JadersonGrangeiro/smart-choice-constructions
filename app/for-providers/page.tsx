@@ -82,7 +82,7 @@ const FAQS = [
   },
   {
     q: "I'm a supplier, not a contractor — how do I join?",
-    a: "Suppliers have a separate, free listing program. Click 'Join as Supplier' below to apply.",
+    a: "Suppliers have a separate listing program at $14.90 for your first month, then $29.90/month. Click 'Join as Supplier' below to get started.",
   },
 ];
 
@@ -137,7 +137,7 @@ export default function ForProvidersPage() {
               onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.18)"}
               onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.1)"}
             >
-              Join as Supplier — Free
+              Join as Supplier — $14.90 First Month
             </Link>
           </div>
           {/* Trust row */}
@@ -282,7 +282,7 @@ export default function ForProvidersPage() {
                 Be Where Contractors Shop
               </h2>
               <p style={{ color: "rgba(255,255,255,0.7)", lineHeight: 1.75, fontSize: "1.0625rem", marginBottom: "2rem" }}>
-                Contractors using Smart Choice are always looking for reliable local suppliers. List your business for free and get discovered by pros who need exactly what you sell.
+                Contractors using Smart Choice are always looking for reliable local suppliers. List your business and get discovered by pros who need exactly what you sell. Start at just $14.90 your first month.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2.5rem" }}>
                 {SUPPLIER_BENEFITS.map(b => (
@@ -296,7 +296,7 @@ export default function ForProvidersPage() {
                 ))}
               </div>
               <Link href="/join/supplier" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "white", color: "var(--navy)", fontWeight: 700, fontSize: "0.9375rem", padding: "0.875rem 1.75rem", borderRadius: "var(--radius)", textDecoration: "none" }}>
-                Join as Supplier — Free
+                Join as Supplier — $14.90 First Month
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </Link>
             </div>
@@ -341,7 +341,7 @@ export default function ForProvidersPage() {
               Join as Contractor →
             </Link>
             <Link href="/join/supplier" style={{ background: "rgba(255,255,255,0.15)", color: "white", fontWeight: 700, fontSize: "1rem", padding: "0.875rem 2rem", borderRadius: "var(--radius)", textDecoration: "none", border: "1px solid rgba(255,255,255,0.3)" }}>
-              Join as Supplier — Free
+              Join as Supplier — $14.90 First Month
             </Link>
           </div>
         </div>

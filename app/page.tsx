@@ -519,12 +519,12 @@ export default function Home() {
                 Are you a supplier or materials dealer?
               </h2>
               <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "0.9375rem", margin: 0 }}>
-                Get discovered by local contractors for free. No credit card required.
+                Get discovered by local contractors. Start at just $14.90 your first month.
               </p>
             </div>
             <div style={{ display: "flex", gap: "0.875rem", flexShrink: 0, flexWrap: "wrap" }}>
               <Link href="/join/supplier" style={{ background: "white", color: "var(--navy)", fontWeight: 700, padding: "0.75rem 1.5rem", borderRadius: "var(--radius)", textDecoration: "none", fontSize: "0.9375rem" }}>
-                List Your Business — Free →
+                List Your Business — $14.90 First Month →
               </Link>
               <Link href="/for-providers" style={{ background: "transparent", color: "rgba(255,255,255,0.8)", fontWeight: 600, padding: "0.75rem 1.25rem", borderRadius: "var(--radius)", textDecoration: "none", fontSize: "0.9375rem", border: "1px solid rgba(255,255,255,0.2)" }}>
                 Learn More

@@ -304,7 +304,7 @@ export async function sendSupplierApplicationEmail({
           <p>⏱ <strong>Review time:</strong> 1–2 business days</p>
           <p>📧 <strong>Next step:</strong> We'll email you once your listing is live</p>
         </div>
-        <p>Your listing will be visible to contractors searching for ${category} in your area. The listing is completely free — no credit card required.</p>
+        <p>Your listing will be visible to contractors searching for ${category} in your area. Your subscription is now active — thank you for joining!</p>
         <p>Questions? Reply to this email or contact us at <a href="mailto:hello@smartchoiceconstructions.com">hello@smartchoiceconstructions.com</a></p>
       </div>
     `),

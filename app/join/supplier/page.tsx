@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { US_STATES, COMPANY } from "@/lib/data";
+import { US_STATES, COMPANY, } from "@/lib/data";
 import { SUPPLIER_CATEGORIES } from "@/lib/supplier-data";
 
 interface FormData {
@@ -25,7 +25,6 @@ export default function SupplierJoinPage() {
   const [form, setForm]         = useState<FormData>(INIT);
   const [errors, setErrors]     = useState<Partial<FormData>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone]         = useState(false);
   const [serverError, setServerError] = useState("");
 
   const set = (k: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -68,30 +67,12 @@ export default function SupplierJoinPage() {
       });
       const d = await res.json();
       if (!res.ok) { setServerError(d.error ?? "Submission failed. Please try again."); return; }
-      setDone(true);
+      window.location.href = d.checkoutUrl;
     } catch {
       setServerError("Network error. Please try again.");
     } finally {
       setSubmitting(false);
     }
-  }
-
-  if (done) {
-    return (
-      <div style={{ paddingTop: "76px", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--gray-50)" }}>
-        <div style={{ background: "white", borderRadius: "var(--radius-xl)", padding: "3rem 2.5rem", textAlign: "center", maxWidth: "500px", margin: "2rem", boxShadow: "var(--shadow-xl)" }}>
-          <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>✅</div>
-          <h1 style={{ fontWeight: 800, color: "var(--navy)", fontSize: "1.75rem", marginBottom: "0.75rem" }}>Application Received!</h1>
-          <p style={{ color: "var(--gray-600)", lineHeight: 1.7, marginBottom: "2rem" }}>
-            Thank you for applying to join our supplier directory. Our team will review your application and contact you at <strong>{form.email}</strong> within 1–2 business days.
-          </p>
-          <p style={{ color: "var(--gray-500)", fontSize: "0.9375rem", marginBottom: "2rem" }}>
-            Questions? Email us at <a href={`mailto:${COMPANY.email}`} style={{ color: "var(--navy)", fontWeight: 600 }}>{COMPANY.email}</a>
-          </p>
-          <Link href="/" className="btn-red" style={{ display: "block", textAlign: "center", padding: "0.875rem" }}>Back to Home</Link>
-        </div>
-      </div>
-    );
   }
 
   const field = (k: keyof FormData, label: string, placeholder: string, type = "text") => (
@@ -117,13 +98,13 @@ export default function SupplierJoinPage() {
       <div style={{ background: "linear-gradient(155deg, #0a1829 0%, var(--navy) 100%)", padding: "3.5rem 0 4rem", textAlign: "center" }}>
         <div className="container">
           <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "999px", padding: "0.375rem 1rem", marginBottom: "1.5rem" }}>
-            <span style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>Free Listing — No Credit Card Required</span>
+            <span style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>$14.90 First Month — Then $29.90/month</span>
           </div>
           <h1 style={{ fontWeight: 800, color: "white", fontSize: "clamp(1.75rem,4vw,2.75rem)", marginBottom: "0.875rem" }}>
             Join the Smart Choice Supplier Directory
           </h1>
           <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "1.0625rem", maxWidth: "520px", margin: "0 auto" }}>
-            Get discovered by contractors who need your products and services. Your listing is free — forever.
+            Get discovered by contractors who need your products and services. Start for just $14.90 your first month.
           </p>
         </div>
       </div>
@@ -199,7 +180,7 @@ export default function SupplierJoinPage() {
               <Link href="/terms" style={{ color: "var(--navy)", fontWeight: 600 }}>Terms of Service</Link>{" "}
               and{" "}
               <Link href="/privacy" style={{ color: "var(--navy)", fontWeight: 600 }}>Privacy Policy</Link>.
-              Your listing will be reviewed and published within 1–2 business days. Listing is free with no credit card required.
+              Your listing will be reviewed and published within 1–2 business days. You will be redirected to our secure payment page.
             </div>
 
             <button
@@ -208,7 +189,7 @@ export default function SupplierJoinPage() {
               className="btn-red"
               style={{ width: "100%", marginTop: "1.5rem", padding: "1rem", fontSize: "1rem", opacity: submitting ? 0.7 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
             >
-              {submitting ? "Submitting…" : "Submit My Application →"}
+              {submitting ? "Redirecting to payment…" : "Continue to Payment — $14.90 →"}
             </button>
 
             <p style={{ textAlign: "center", marginTop: "1rem", fontSize: "0.875rem", color: "var(--gray-500)" }}>
@@ -221,7 +202,7 @@ export default function SupplierJoinPage() {
         {/* Why join */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginTop: "2rem" }}>
           {[
-            { icon: "✅", title: "100% Free", desc: "No cost to list your business" },
+            { icon: "💰", title: "$14.90 First Month", desc: "Then $29.90/month, cancel anytime" },
             { icon: "🔍", title: "Get Discovered", desc: "Contractors actively searching" },
             { icon: "📞", title: "Direct Contact", desc: "Leads contact you directly" },
           ].map(i => (
