@@ -84,14 +84,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
   );
 
-  const city_service_pages: MetadataRoute.Sitemap = US_STATES.slice(0, 10).flatMap(state =>
-    state.cities.slice(0, 3).flatMap(city =>
-      CATEGORIES.slice(0, 6).map(cat => ({
+  // Mirror exactly the generateStaticParams logic from the [service] page
+  const PRIORITY_STATES = new Set(["TX","CA","FL","NY","IL","GA","WA","CO","AZ","NC"]);
+  const city_service_pages: MetadataRoute.Sitemap = US_STATES.flatMap(state => {
+    const cityLimit = PRIORITY_STATES.has(state.code) ? 6 : 2;
+    return state.cities.slice(0, cityLimit).flatMap(city =>
+      CATEGORIES.slice(0, 18).map(cat => ({
         url: `${base}/locations/${state.slug}/${cityToSlug(city)}/${cat.id}`,
         lastModified: now, priority: 0.65, changeFrequency: "monthly" as const,
       }))
-    )
-  );
+    );
+  });
 
   // ── Contractors (real DB) ─────────────────────────────────────────────────
   const contractor_pages: MetadataRoute.Sitemap = (contractorsRes.data ?? []).map(c => ({
