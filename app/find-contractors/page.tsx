@@ -57,7 +57,7 @@ function ContractorCard({ c }: { c: Contractor }) {
 
   return (
     <div className="card" style={{ padding: "1.5rem" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: "1.25rem", alignItems: "start" }}>
+      <div className="search-card-layout">
         <div style={{
           width: "58px", height: "58px",
           background: photo ? "transparent" : "var(--navy)",
@@ -109,7 +109,7 @@ function ContractorCard({ c }: { c: Contractor }) {
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", flexShrink: 0 }}>
+        <div className="search-card-actions">
           <Link href={`/request-quote?contractor=${c.id}`} className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>
             {t.common.getQuote}
           </Link>

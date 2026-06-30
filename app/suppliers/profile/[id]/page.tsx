@@ -113,7 +113,7 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
 
       {/* Sticky header */}
       <div style={{ background: "white", borderBottom: "1px solid var(--gray-100)", position: "sticky", top: "72px", zIndex: 50 }}>
-        <div className="container" style={{ padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: "1.5rem", flexWrap: "wrap" }}>
+        <div className="container profile-sticky-content">
           <div style={{ width: "72px", height: "72px", background: `${cat?.color ?? "var(--navy)"}18`, border: `2px solid ${cat?.color ?? "var(--navy)"}22`, borderRadius: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", flexShrink: 0, marginTop: "-36px" }}>
             {s.logo_url ? <img src={s.logo_url} alt={s.company_name} style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: "16px" }} /> : (cat?.icon ?? "🏢")}
           </div>
@@ -134,7 +134,7 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
               </div>
             )}
           </div>
-          <div style={{ display: "flex", gap: "0.75rem", flexShrink: 0 }}>
+          <div className="profile-sticky-actions">
             {s.phone && <a href={`tel:${s.phone}`} className="btn-red" style={{ padding: "0.75rem 1.5rem" }}>📞 Call</a>}
             {s.email && <a href={`mailto:${s.email}`} className="btn-secondary" style={{ padding: "0.75rem 1.5rem" }}>Email</a>}
           </div>
@@ -142,7 +142,7 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
       </div>
 
       <div className="container" style={{ padding: "2.5rem 1.5rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2.5rem" }}>
+        <div className="profile-body-grid profile-body-grid-2-1">
           {/* Main content */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             {/* About */}

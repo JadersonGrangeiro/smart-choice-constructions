@@ -370,7 +370,7 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
               )}
             </div>
 
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexShrink: 0 }}>
+            <div className="profile-sticky-actions">
               <Link href={`/request-quote?contractor=${c.id}`} className="btn-red" style={{ padding: "0.75rem 1.5rem" }}>
                 Get Free Quote
               </Link>
@@ -401,7 +401,7 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
 
       {/* ── Main content ── */}
       <div className="container" style={{ padding: "2.5rem 1.5rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2.5rem" }}>
+        <div className="profile-body-grid profile-body-grid-2-1">
 
           {/* ══ Left column ══ */}
           <div>

@@ -327,6 +327,67 @@ html, body { overflow-x: hidden; }
   .show-mobile-only { display:none !important; }
 }
 
+/* ─── Contractor search result card ─── */
+.search-card-layout {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1.25rem;
+  align-items: start;
+}
+.search-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .search-card-layout {
+    grid-template-columns: auto 1fr;
+  }
+  .search-card-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-shrink: unset;
+  }
+  .search-card-actions a {
+    flex: 1;
+  }
+}
+
+/* ─── Supplier / contractor profile sticky header ─── */
+.profile-sticky-content {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.profile-sticky-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .profile-sticky-actions {
+    width: 100%;
+  }
+  .profile-sticky-actions a {
+    flex: 1;
+  }
+}
+
+/* ─── Supplier / contractor profile body grid ─── */
+.profile-body-grid {
+  display: grid;
+  gap: 2.5rem;
+}
+.profile-body-grid-2-1 { grid-template-columns: 2fr 1fr; }
+@media (max-width: 768px) {
+  .profile-body-grid-2-1 {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar { width:5px; }
 ::-webkit-scrollbar-track { background:transparent; }
