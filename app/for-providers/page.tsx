@@ -275,7 +275,7 @@ export default function ForProvidersPage() {
       {/* ── SUPPLIER SECTION ── */}
       <section style={{ padding: "5rem 0", background: "linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%)" }}>
         <div className="container">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", alignItems: "center" }} className="hero-grid">
+          <div className="hero-grid">
             <div>
               <span style={{ display: "inline-block", background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.85)", fontWeight: 600, fontSize: "0.8125rem", letterSpacing: "0.07em", textTransform: "uppercase", padding: "0.375rem 1rem", borderRadius: "999px", marginBottom: "1.5rem" }}>For Suppliers</span>
               <h2 style={{ fontSize: "clamp(1.75rem,3.5vw,2.5rem)", fontWeight: 800, color: "white", marginBottom: "1rem", lineHeight: 1.2 }}>

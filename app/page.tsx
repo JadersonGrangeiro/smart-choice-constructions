@@ -108,7 +108,7 @@ export default function Home() {
       {/* ── HERO ── */}
       <section className="hero-bg" style={{ minHeight: "100vh", display: "flex", alignItems: "center", paddingTop: "76px" }}>
         <div className="container" style={{ position: "relative", zIndex: 10, width: "100%", paddingTop: "2rem", paddingBottom: "5rem" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", alignItems: "center" }} className="hero-grid">
+          <div className="hero-grid">
             <div>
               {/* Badge */}
               <div className="animate-fade-in" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "999px", padding: "0.375rem 1rem 0.375rem 0.5rem", marginBottom: "2rem" }}>
@@ -363,7 +363,7 @@ export default function Home() {
       {/* ── FOR CONTRACTORS ── */}
       <section style={{ background: "var(--navy)", padding: "5rem 0" }}>
         <div className="container">
-          <div className="contractors-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", alignItems: "center" }}>
+          <div className="contractors-grid">
             <Reveal>
               <span className="badge badge-white" style={{ marginBottom: "1.5rem" }}>{t.sections.forContractorsBadge}</span>
               <h2 className="heading-lg" style={{ color: "white", marginBottom: "1.25rem" }}>{t.sections.forContractorsTitle}</h2>

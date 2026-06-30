@@ -388,7 +388,7 @@ export default function AccountPage() {
                 {quotes.map((item, i) => {
                   const st = STATUS_STYLE[item.status] ?? STATUS_STYLE.pending;
                   return (
-                    <div key={item.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "1rem", padding: "1.25rem 1.5rem", borderBottom: i < quotes.length - 1 ? "1px solid var(--gray-50)" : "none", alignItems: "center" }}>
+                    <div key={item.id} style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", padding: "1.25rem 1.5rem", borderBottom: i < quotes.length - 1 ? "1px solid var(--gray-50)" : "none", alignItems: "center" }}>
                       <div>
                         <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "0.9375rem", marginBottom: "0.25rem" }}>{item.contractors?.company_name ?? "Unknown"}</div>
                         <div style={{ fontSize: "0.875rem", color: "var(--gray-500)" }}>{item.service_type}</div>

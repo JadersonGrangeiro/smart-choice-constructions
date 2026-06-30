@@ -102,7 +102,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
             </div>
 
             {/* State stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", flexShrink: 0 }}>
+            <div className="grid-2col" style={{ flexShrink: 0 }}>
               {[
                 { label: "Cities Covered",    value: st.cities.length + "+" },
                 { label: "Service Categories",value: CATEGORIES.length + "+" },
