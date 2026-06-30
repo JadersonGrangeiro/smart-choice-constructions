@@ -23,7 +23,7 @@ export async function POST() {
   const stripe = getStripe();
   const session = await stripe.billingPortal.sessions.create({
     customer:   contractor.stripe_customer_id,
-    return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/contractor`,
+    return_url: `${process.env.NEXT_PUBLIC_BASE_URL ?? "https://smartchoiceconstructions.com"}/dashboard/contractor`,
   });
 
   return NextResponse.json({ url: session.url });

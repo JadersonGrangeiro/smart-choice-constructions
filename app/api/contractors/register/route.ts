@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     if (contractorError) throw contractorError;
 
     // 4. Create Stripe Checkout session
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://smartchoiceconstructions.com";
 
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
