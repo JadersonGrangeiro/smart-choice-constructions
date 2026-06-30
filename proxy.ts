@@ -32,6 +32,11 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Roles that can access admin UI and /api/admin/* routes.
+  // Add 'editor' and 'support' here once those roles are provisioned in DB.
+  const ADMIN_ROLES = ["admin", "editor", "support"] as const;
+  type AdminRole = typeof ADMIN_ROLES[number];
+
   // ── Admin routes: require admin role ────────────────────────────────────────
   if (pathname.startsWith("/admin")) {
     if (!user) {
@@ -44,7 +49,7 @@ export async function proxy(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
+    if (!profile || !ADMIN_ROLES.includes(profile.role as AdminRole)) {
       return NextResponse.redirect(new URL("/?error=unauthorized", request.url));
     }
   }
@@ -98,7 +103,7 @@ export async function proxy(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
+    if (!profile || !ADMIN_ROLES.includes(profile.role as AdminRole)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
