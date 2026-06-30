@@ -78,6 +78,11 @@ export async function sendPushNotification(
   return { sent: 0, failed: 0 };
 }
 
+export interface DeviceTokenResult {
+  success: boolean;
+  error?: string;
+}
+
 // ── Register a device token (called on app launch / login) ───────────────────
 export async function registerDeviceToken(
   userId: string,
@@ -85,10 +90,10 @@ export async function registerDeviceToken(
   platform: 'ios' | 'android' | 'web',
   deviceId?: string,
   appVersion?: string,
-): Promise<void> {
+): Promise<DeviceTokenResult> {
   const { createAdminClient } = await import('@/lib/supabase/server');
   const supabase = createAdminClient();
-  await supabase.from('device_tokens').upsert(
+  const { error } = await supabase.from('device_tokens').upsert(
     {
       user_id:      userId,
       token,
@@ -100,16 +105,18 @@ export async function registerDeviceToken(
     },
     { onConflict: 'user_id,token' },
   );
+  return error ? { success: false, error: error.message } : { success: true };
 }
 
 // ── Unregister a token (called on logout or token rotation) ──────────────────
-export async function unregisterDeviceToken(token: string): Promise<void> {
+export async function unregisterDeviceToken(token: string): Promise<DeviceTokenResult> {
   const { createAdminClient } = await import('@/lib/supabase/server');
   const supabase = createAdminClient();
-  await supabase
+  const { error } = await supabase
     .from('device_tokens')
     .update({ is_active: false })
     .eq('token', token);
+  return error ? { success: false, error: error.message } : { success: true };
 }
 
 // ── Mark a notification as read ──────────────────────────────────────────────

@@ -11,7 +11,7 @@ import { registerDeviceToken, unregisterDeviceToken } from "@/lib/notifications"
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
 
   if (!user || error) {
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
 
   if (!user || error) {
