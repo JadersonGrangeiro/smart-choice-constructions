@@ -69,7 +69,7 @@ function ContractorCard({ c }: { c: Contractor }) {
           {!photo && initials}
         </div>
 
-        <div>
+        <div className="search-card-body">
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.375rem" }}>
             <h3 style={{ fontWeight: 700, fontSize: "1rem", color: "var(--navy)" }}>{c.company_name}</h3>
             {c.is_background_checked && <span className="badge badge-green" style={{ fontSize: "0.6875rem" }}>✓ {t.common.verified}</span>}

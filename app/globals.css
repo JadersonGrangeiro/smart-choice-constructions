@@ -327,12 +327,16 @@ html, body { overflow-x: hidden; }
   .show-mobile-only { display:none !important; }
 }
 
-/* ─── Contractor search result card ─── */
+/* ─── Contractor / Supplier search result card ─── */
 .search-card-layout {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   gap: 1.25rem;
-  align-items: start;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.search-card-body {
+  flex: 1 1 160px;
+  min-width: 0;
 }
 .search-card-actions {
   display: flex;
@@ -341,16 +345,14 @@ html, body { overflow-x: hidden; }
   flex-shrink: 0;
 }
 @media (max-width: 600px) {
-  .search-card-layout {
-    grid-template-columns: auto 1fr;
-  }
   .search-card-actions {
-    grid-column: 1 / -1;
     flex-direction: row;
     flex-shrink: unset;
+    width: 100%;
   }
   .search-card-actions a {
     flex: 1;
+    text-align: center;
   }
 }
 

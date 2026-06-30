@@ -142,7 +142,7 @@ function FindSuppliersContent() {
                         <div style={{ width: "56px", height: "56px", background: `${cat?.color ?? "var(--navy)"}18`, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
                           {cat?.icon ?? "🏢"}
                         </div>
-                        <div>
+                        <div className="search-card-body">
                           <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", flexWrap: "wrap", marginBottom: "0.375rem" }}>
                             <h3 style={{ fontWeight: 700, fontSize: "1rem", color: "var(--navy)" }}>{s.company_name}</h3>
                             {s.is_featured && <span className="badge badge-red" style={{ fontSize: "0.7rem" }}>Featured</span>}
