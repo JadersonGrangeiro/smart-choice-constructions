@@ -76,6 +76,8 @@ export default function AccountPage() {
   const [saveMsg, setSaveMsg]   = useState("");
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editState, setEditState] = useState("");
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const [showCompare, setShowCompare] = useState(false);
   const supabase = createClient();
@@ -96,6 +98,8 @@ export default function AccountPage() {
         setProfile(profileRes.data);
         setEditName(profileRes.data.full_name ?? "");
         setEditPhone(profileRes.data.phone ?? "");
+        setEditCity(profileRes.data.city ?? "");
+        setEditState(profileRes.data.state_code ?? "");
       }
       setFavorites((favRes.data as unknown as Favorite[]) ?? []);
       setQuotes((quoteRes.data as unknown as QuoteRequest[]) ?? []);
@@ -116,8 +120,8 @@ export default function AccountPage() {
     setSaveMsg("");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("profiles").update({ full_name: editName, phone: editPhone }).eq("id", user.id);
-    setProfile(prev => prev ? { ...prev, full_name: editName, phone: editPhone } : prev);
+    await supabase.from("profiles").update({ full_name: editName, phone: editPhone, city: editCity || null, state_code: editState || null }).eq("id", user.id);
+    setProfile(prev => prev ? { ...prev, full_name: editName, phone: editPhone, city: editCity || undefined, state_code: editState || undefined } : prev);
     setSaveMsg("Changes saved!");
     setSaving(false);
     setTimeout(() => setSaveMsg(""), 3000);
@@ -465,6 +469,16 @@ export default function AccountPage() {
               <div>
                 <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.5rem" }}>Phone</label>
                 <input type="tel" className="form-input" value={editPhone} onChange={e => setEditPhone(e.target.value)} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "0.75rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.5rem" }}>City</label>
+                  <input type="text" className="form-input" placeholder="e.g. Austin" value={editCity} onChange={e => setEditCity(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.5rem" }}>State</label>
+                  <input type="text" className="form-input" placeholder="TX" maxLength={2} value={editState} onChange={e => setEditState(e.target.value.toUpperCase())} style={{ width: "72px", textTransform: "uppercase" }} />
+                </div>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "1.75rem", paddingTop: "1.5rem", borderTop: "1px solid var(--gray-100)" }}>

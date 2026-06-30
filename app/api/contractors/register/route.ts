@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
+import { rateLimit, getIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const rl = rateLimit(getIp(request), 3, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ error: "Too many registration attempts. Please wait a minute." }, {
+      status: 429, headers: { "Retry-After": String(rl.retryAfter) },
+    });
+  }
+
   try {
     const body = await request.json();
 

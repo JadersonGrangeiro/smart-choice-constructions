@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendNewReviewEmail } from "@/lib/resend/emails";
+import { rateLimit, getIp } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -25,6 +26,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const rl = rateLimit(getIp(request), 10, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ error: "Too many requests. Please wait a minute." }, {
+      status: 429, headers: { "Retry-After": String(rl.retryAfter) },
+    });
+  }
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();

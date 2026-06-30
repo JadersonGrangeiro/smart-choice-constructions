@@ -64,7 +64,7 @@ export default function HomeownerDashboard() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: "1rem", marginBottom: "2.5rem" }}>
           {[
             { icon: "🔍", label: "Find Contractors", desc: "Search verified pros near you", href: "/find-contractors", color: "var(--navy)" },
-            { icon: "📋", label: "Request a Quote", desc: "Post your project for free", href: "/contact", color: "var(--red)" },
+            { icon: "📋", label: "Request a Quote", desc: "Post your project for free", href: "/request-quote", color: "var(--red)" },
             { icon: "🗺️", label: "Browse by Location", desc: "Contractors in your state", href: "/locations", color: "#047857" },
             { icon: "💬", label: "Messages", desc: "View your conversations", href: "/dashboard/messages", color: "#6366f1" },
           ].map(action => (
