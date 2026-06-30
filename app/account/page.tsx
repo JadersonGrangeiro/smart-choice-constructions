@@ -76,6 +76,8 @@ export default function AccountPage() {
   const [saveMsg, setSaveMsg]   = useState("");
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
+  const [showCompare, setShowCompare] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -240,9 +242,84 @@ export default function AccountPage() {
         {/* ── FAVORITES ── */}
         {tab === "favorites" && (
           <div>
-            <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1.25rem", marginBottom: "1.5rem" }}>
-              Saved Contractors <span style={{ color: "var(--red)" }}>({favorites.length})</span>
-            </h2>
+            {/* Compare modal */}
+            {showCompare && compareIds.size >= 2 && (() => {
+              const selected = favorites.filter(f => compareIds.has(f.contractors.id)).map(f => f.contractors);
+              return (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+                  onClick={e => { if (e.target === e.currentTarget) setShowCompare(false); }}
+                >
+                  <div style={{ background: "white", borderRadius: "var(--radius-xl)", maxWidth: "860px", width: "100%", maxHeight: "90vh", overflow: "auto", boxShadow: "var(--shadow-xl)" }}>
+                    <div style={{ padding: "1.5rem 2rem", borderBottom: "1px solid var(--gray-100)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1.125rem", margin: 0 }}>Side-by-Side Comparison</h2>
+                      <button onClick={() => setShowCompare(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.5rem", color: "var(--gray-400)", padding: 0 }}>×</button>
+                    </div>
+                    <div style={{ padding: "1.5rem 2rem", overflow: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9375rem" }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: "left", padding: "0.75rem 1rem", background: "var(--gray-50)", color: "var(--gray-500)", fontWeight: 600, fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.05em", borderRadius: "8px 0 0 8px", width: "150px" }}>Feature</th>
+                            {selected.map(c => (
+                              <th key={c.id} style={{ textAlign: "center", padding: "0.75rem 1rem", background: "var(--gray-50)", color: "var(--navy)", fontWeight: 700 }}>
+                                <div style={{ marginBottom: "0.25rem" }}>{c.company_name}</div>
+                                <div style={{ fontWeight: 400, color: "var(--gray-500)", fontSize: "0.8125rem" }}>{c.city}, {c.state_code}</div>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { label: "Category",       val: (c: typeof selected[0]) => c.category },
+                            { label: "Location",       val: (c: typeof selected[0]) => `${c.city}, ${c.state_code}` },
+                            { label: "Ranking Score",  val: (c: typeof selected[0]) => `${c.ranking_score?.toFixed(0) ?? "—"}/100` },
+                          ].map(row => (
+                            <tr key={row.label} style={{ borderBottom: "1px solid var(--gray-100)" }}>
+                              <td style={{ padding: "0.875rem 1rem", color: "var(--gray-600)", fontWeight: 600, fontSize: "0.875rem" }}>{row.label}</td>
+                              {selected.map(c => (
+                                <td key={c.id} style={{ padding: "0.875rem 1rem", textAlign: "center", color: "var(--navy)", fontWeight: 500 }}>{row.val(c)}</td>
+                              ))}
+                            </tr>
+                          ))}
+                          <tr>
+                            <td style={{ padding: "0.875rem 1rem", color: "var(--gray-600)", fontWeight: 600, fontSize: "0.875rem" }}>Profile</td>
+                            {selected.map(c => (
+                              <td key={c.id} style={{ padding: "0.875rem 1rem", textAlign: "center" }}>
+                                <Link href={`/contractors/${c.id}`} className="btn-red" style={{ padding: "0.5rem 1rem", fontSize: "0.8125rem" }}>View Profile →</Link>
+                              </td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td style={{ padding: "0.875rem 1rem", color: "var(--gray-600)", fontWeight: 600, fontSize: "0.875rem" }}>Request Quote</td>
+                            {selected.map(c => (
+                              <td key={c.id} style={{ padding: "0.875rem 1rem", textAlign: "center" }}>
+                                <Link href={`/request-quote?contractor=${c.id}`} className="btn-secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.8125rem" }}>Get Quote</Link>
+                              </td>
+                            ))}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
+              <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1.25rem", margin: 0 }}>
+                Saved Contractors <span style={{ color: "var(--red)" }}>({favorites.length})</span>
+              </h2>
+              {compareIds.size >= 2 && (
+                <button onClick={() => setShowCompare(true)} className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>
+                  Compare {compareIds.size} Contractors →
+                </button>
+              )}
+            </div>
+            {compareIds.size > 0 && (
+              <div style={{ background: "rgba(22,46,94,0.05)", border: "1px solid rgba(22,46,94,0.15)", borderRadius: "var(--radius-sm)", padding: "0.625rem 1rem", marginBottom: "1rem", fontSize: "0.875rem", color: "var(--gray-600)" }}>
+                {compareIds.size} selected — {compareIds.size < 2 ? "select at least 2 to compare" : "click Compare to see them side-by-side"}
+                <button onClick={() => setCompareIds(new Set())} style={{ marginLeft: "1rem", background: "none", border: "none", cursor: "pointer", color: "var(--red)", fontWeight: 600, fontSize: "0.8125rem", padding: 0 }}>Clear</button>
+              </div>
+            )}
             {favorites.length === 0 ? (
               <div className="card" style={{ padding: "3rem", textAlign: "center" }}>
                 <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>❤️</div>
@@ -254,19 +331,37 @@ export default function AccountPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {favorites.map(fav => {
                   const c = fav.contractors;
+                  const isSelected = compareIds.has(c.id);
                   return (
-                    <div key={fav.id} className="card" style={{ padding: "1.5rem", display: "flex", alignItems: "center", gap: "1.25rem" }}>
+                    <div key={fav.id} className="card" style={{ padding: "1.5rem", display: "flex", alignItems: "center", gap: "1.25rem", border: `1.5px solid ${isSelected ? "var(--navy)" : "var(--gray-100)"}`, background: isSelected ? "rgba(22,46,94,0.02)" : "white", transition: "all 0.15s" }}>
+                      <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                        <input type="checkbox" checked={isSelected}
+                          onChange={e => {
+                            setCompareIds(prev => {
+                              const next = new Set(prev);
+                              if (e.target.checked) { if (next.size < 4) next.add(c.id); }
+                              else next.delete(c.id);
+                              return next;
+                            });
+                          }}
+                          style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                        />
+                      </label>
                       <div style={{ width: "52px", height: "52px", background: "var(--navy)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: "1.25rem", flexShrink: 0 }}>
                         {c.company_name.charAt(0)}
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{c.company_name}</div>
                         <div style={{ fontSize: "0.875rem", color: "var(--gray-500)" }}>{c.category} · {c.city}, {c.state_code}</div>
+                        {c.ranking_score > 0 && (
+                          <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)", marginTop: "0.125rem" }}>Ranking: {c.ranking_score.toFixed(0)}/100</div>
+                        )}
                       </div>
                       <div style={{ display: "flex", gap: "0.625rem", flexShrink: 0 }}>
-                        <Link href={`/contractors/${c.id}`} className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>View Profile</Link>
+                        <Link href={`/request-quote?contractor=${c.id}`} className="btn-red" style={{ padding: "0.5rem 1rem", fontSize: "0.8125rem" }}>Get Quote</Link>
+                        <Link href={`/contractors/${c.id}`} className="btn-secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.8125rem" }}>Profile</Link>
                         <button onClick={() => handleRemoveFavorite(fav.id, c.id)}
-                          style={{ padding: "0.625rem", background: "rgba(199,25,26,0.08)", color: "var(--red)", border: "1px solid rgba(199,25,26,0.15)", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: "1rem" }}
+                          style={{ padding: "0.5rem", background: "rgba(199,25,26,0.08)", color: "var(--red)", border: "1px solid rgba(199,25,26,0.15)", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: "1rem" }}
                           aria-label="Remove from favorites">❤️</button>
                       </div>
                     </div>
