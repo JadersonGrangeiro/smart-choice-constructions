@@ -333,7 +333,7 @@ export default function AccountPage() {
                   const c = fav.contractors;
                   const isSelected = compareIds.has(c.id);
                   return (
-                    <div key={fav.id} className="card" style={{ padding: "1.5rem", display: "flex", alignItems: "center", gap: "1.25rem", border: `1.5px solid ${isSelected ? "var(--navy)" : "var(--gray-100)"}`, background: isSelected ? "rgba(22,46,94,0.02)" : "white", transition: "all 0.15s" }}>
+                    <div key={fav.id} className="card" style={{ padding: "1.5rem", display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap", border: `1.5px solid ${isSelected ? "var(--navy)" : "var(--gray-100)"}`, background: isSelected ? "rgba(22,46,94,0.02)" : "white", transition: "all 0.15s" }}>
                       <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
                         <input type="checkbox" checked={isSelected}
                           onChange={e => {
@@ -350,7 +350,7 @@ export default function AccountPage() {
                       <div style={{ width: "52px", height: "52px", background: "var(--navy)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: "1.25rem", flexShrink: 0 }}>
                         {c.company_name.charAt(0)}
                       </div>
-                      <div style={{ flex: 1 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{c.company_name}</div>
                         <div style={{ fontSize: "0.875rem", color: "var(--gray-500)" }}>{c.category} · {c.city}, {c.state_code}</div>
                         {c.ranking_score > 0 && (

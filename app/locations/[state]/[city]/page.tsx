@@ -174,23 +174,25 @@ export default async function CityPage({ params }: { params: Promise<{ state: st
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {featuredContractors.map(c => (
-              <div key={c.id} className="card" style={{ padding: "1.5rem", display: "flex", alignItems: "flex-start", gap: "1.25rem" }}>
-                <div style={{ width: "52px", height: "52px", background: "var(--navy)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: "1.25rem", flexShrink: 0 }}>
-                  {c.name.charAt(0)}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{c.company}</div>
-                  <div style={{ fontSize: "0.875rem", color: "var(--gray-500)", marginBottom: "0.5rem" }}>{c.category} · {c.yearsExp} yrs experience</div>
-                  <Stars rating={c.rating} />
-                  <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)", marginLeft: "0.5rem" }}>({c.reviews} reviews)</span>
-                </div>
-                <div style={{ display: "flex", gap: "0.625rem", flexShrink: 0 }}>
-                  <Link href={`/request-quote?contractor=${c.id}`} className="btn-red" style={{ padding: "0.625rem 1.125rem", fontSize: "0.875rem" }}>
-                    Get Quote
-                  </Link>
-                  <Link href={`/contractors/${c.id}`} className="btn-secondary" style={{ padding: "0.625rem 1.125rem", fontSize: "0.875rem" }}>
-                    View
-                  </Link>
+              <div key={c.id} className="card" style={{ padding: "1.5rem" }}>
+                <div className="search-card-layout">
+                  <div style={{ width: "52px", height: "52px", background: "var(--navy)", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: "1.25rem", flexShrink: 0 }}>
+                    {c.name.charAt(0)}
+                  </div>
+                  <div className="search-card-body">
+                    <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{c.company}</div>
+                    <div style={{ fontSize: "0.875rem", color: "var(--gray-500)", marginBottom: "0.5rem" }}>{c.category} · {c.yearsExp} yrs experience</div>
+                    <Stars rating={c.rating} />
+                    <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)", marginLeft: "0.5rem" }}>({c.reviews} reviews)</span>
+                  </div>
+                  <div className="search-card-actions" style={{ flexDirection: "row" }}>
+                    <Link href={`/request-quote?contractor=${c.id}`} className="btn-red" style={{ padding: "0.625rem 1.125rem", fontSize: "0.875rem" }}>
+                      Get Quote
+                    </Link>
+                    <Link href={`/contractors/${c.id}`} className="btn-secondary" style={{ padding: "0.625rem 1.125rem", fontSize: "0.875rem" }}>
+                      View
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}

@@ -80,11 +80,12 @@ export default async function SupplierCategoryPage({ params }: { params: Promise
                 const rating = s.rating ?? 0;
                 const reviewCount = s.review_count ?? 0;
                 return (
-                  <div key={s.id} className="card" style={{ padding: "1.5rem", display: "flex", gap: "1.25rem", alignItems: "flex-start" }}>
+                  <div key={s.id} className="card" style={{ padding: "1.5rem" }}>
+                    <div className="search-card-layout">
                     <div style={{ width: "56px", height: "56px", background: `${cat.color}18`, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.75rem", flexShrink: 0 }}>
                       {s.logo_url ? <img src={s.logo_url} alt={s.company_name} style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: "12px" }} /> : cat.icon}
                     </div>
-                    <div style={{ flex: 1 }}>
+                    <div className="search-card-body">
                       <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginBottom: "0.375rem", flexWrap: "wrap" }}>
                         <h3 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem" }}>{s.company_name}</h3>
                         {s.is_featured && <span style={{ background: "rgba(199,25,26,0.08)", color: "var(--red)", padding: "0.2rem 0.5rem", borderRadius: "999px", fontSize: "0.7rem", fontWeight: 700 }}>Featured</span>}
@@ -100,7 +101,7 @@ export default async function SupplierCategoryPage({ params }: { params: Promise
                         </div>
                       )}
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", flexShrink: 0 }}>
+                    <div className="search-card-actions">
                       {rating > 0 && (
                         <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", justifyContent: "flex-end" }}>
                           <Stars rating={rating} />
@@ -115,6 +116,7 @@ export default async function SupplierCategoryPage({ params }: { params: Promise
                           Call
                         </a>
                       )}
+                    </div>
                     </div>
                   </div>
                 );
