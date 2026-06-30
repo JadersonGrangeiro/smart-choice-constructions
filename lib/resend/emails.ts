@@ -170,6 +170,28 @@ export async function sendContactEmail({
   });
 }
 
+export async function sendCrmEmail({
+  to, toName, subject, body: emailBody, fromAdmin = "Smart Choice Team",
+}: { to: string; toName: string; subject: string; body: string; fromAdmin?: string }) {
+  await sendEmail({
+    from: `Smart Choice <${FROM}>`,
+    to,
+    replyTo: process.env.RESEND_FROM_EMAIL ?? "hello@smartchoiceconstructions.com",
+    subject,
+    html: html(`
+      <div class="head"><h1>Smart Choice Constructions</h1></div>
+      <div class="body">
+        <p>Hi ${toName.split(" ")[0]},</p>
+        <div style="white-space:pre-line;line-height:1.75;color:#374151">${emailBody.replace(/\n/g, "<br/>")}</div>
+        <p style="margin-top:24px;color:#999;font-size:13px">— ${fromAdmin}</p>
+      </div>
+      <div class="foot">Smart Choice Constructions LLC · 2222 W Grand River Ave, Okemos, MI 48864<br/>
+        <a href="${BASE}/unsubscribe" style="color:#999">Unsubscribe</a>
+      </div>
+    `),
+  });
+}
+
 export async function sendQuoteNotificationEmail({
   to, contractorName, serviceName, clientName,
 }: { to: string; contractorName: string; serviceName: string; clientName: string }) {

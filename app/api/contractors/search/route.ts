@@ -42,6 +42,7 @@ export async function GET(request: Request) {
         service_radius, additional_states,
         ranking_score, response_time_hours,
         working_days, open_time, close_time,
+        availability_status,
         created_at,
         contractor_photos(public_url, sort_order),
         reviews(rating)

@@ -224,20 +224,32 @@ export default function CRMPage() {
 
   const sendEmail = async () => {
     if (!compose||!composeSub||!composeBody) return;
+    if (!compose.to) { showToast("No email address for this contact", false); return; }
     setSendingEmail(true);
-    // Log interaction
-    const entry: CRMInteraction = {
-      id:`i-${Date.now()}`, contactId: compose.contactId,
-      type:"email_out", subject: composeSub, body: composeBody,
-      date: new Date().toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"}),
-    };
-    const updated = [entry,...interactions];
-    await saveInts(updated, tasks);
-    // Open mailto link
-    const mailtoLink = `mailto:${compose.to}?subject=${encodeURIComponent(composeSub)}&body=${encodeURIComponent(composeBody)}`;
-    window.open(mailtoLink, "_blank");
-    showToast("Email logged and mail client opened ✓");
-    setCompose(null); setComposeSub(""); setComposeBody("");
+    try {
+      const res = await fetch("/api/admin/crm/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: compose.to, toName: compose.toName, subject: composeSub, body: composeBody }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        showToast(d.error ?? "Failed to send email", false);
+        setSendingEmail(false);
+        return;
+      }
+      // Log interaction after successful send
+      const entry: CRMInteraction = {
+        id:`i-${Date.now()}`, contactId: compose.contactId,
+        type:"email_out", subject: composeSub, body: composeBody,
+        date: new Date().toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+      };
+      await saveInts([entry,...interactions], tasks);
+      showToast(`Email sent to ${compose.to} ✓`);
+      setCompose(null); setComposeSub(""); setComposeBody("");
+    } catch {
+      showToast("Network error — email not sent", false);
+    }
     setSendingEmail(false);
   };
 

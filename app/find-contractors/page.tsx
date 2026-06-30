@@ -6,6 +6,13 @@ import { CATEGORIES } from "@/lib/data";
 import { useI18n } from "@/lib/i18n/context";
 import SearchBar from "@/components/SearchBar";
 
+const AVAIL_BADGE: Record<string, { label: string; color: string }> = {
+  available:     { label: "Available",              color: "#16a34a" },
+  busy:          { label: "Busy",                   color: "#d97706" },
+  on_vacation:   { label: "On Vacation",            color: "#6366f1" },
+  not_accepting: { label: "Not Accepting Projects", color: "var(--gray-400)" },
+};
+
 interface Contractor {
   id: string;
   company_name: string;
@@ -15,6 +22,7 @@ interface Contractor {
   state_code: string;
   city: string;
   description: string | null;
+  availability_status: string | null;
   is_licensed: boolean;
   is_insured: boolean;
   is_background_checked: boolean;
@@ -87,10 +95,17 @@ function ContractorCard({ c }: { c: Contractor }) {
           )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem", alignItems: "center" }}>
             <span className="badge badge-gray" style={{ fontSize: "0.75rem" }}>{c.category}</span>
-            <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem", color: "var(--gray-400)", marginLeft: "0.25rem" }}>
-              <div style={{ width: "6px", height: "6px", background: "#22c55e", borderRadius: "50%" }}/>
-              {t.common.responds} {responseLabel}
-            </span>
+            {c.availability_status && c.availability_status !== "available" ? (
+              <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem", color: AVAIL_BADGE[c.availability_status]?.color ?? "var(--gray-400)", marginLeft: "0.25rem" }}>
+                <div style={{ width: "6px", height: "6px", background: "currentColor", borderRadius: "50%" }}/>
+                {AVAIL_BADGE[c.availability_status]?.label}
+              </span>
+            ) : (
+              <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem", color: "var(--gray-400)", marginLeft: "0.25rem" }}>
+                <div style={{ width: "6px", height: "6px", background: "#22c55e", borderRadius: "50%" }}/>
+                {t.common.responds} {responseLabel}
+              </span>
+            )}
           </div>
         </div>
 

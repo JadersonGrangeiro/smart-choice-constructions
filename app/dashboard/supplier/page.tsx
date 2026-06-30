@@ -3,11 +3,20 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+type AvailStatus = "available" | "busy" | "on_vacation" | "not_accepting";
+const AVAIL_MAP: Record<AvailStatus, { label: string; color: string; bg: string }> = {
+  available:     { label: "Available",              color: "#16a34a", bg: "rgba(22,163,74,0.1)" },
+  busy:          { label: "Busy",                   color: "#d97706", bg: "rgba(245,158,11,0.1)" },
+  on_vacation:   { label: "On Vacation",            color: "#6366f1", bg: "rgba(99,102,241,0.1)" },
+  not_accepting: { label: "Not Accepting Inquiries",color: "var(--gray-500)", bg: "var(--gray-100)" },
+};
+
 interface Supplier {
   id: string; company_name: string; category: string; city: string; state_code: string;
   phone: string | null; email: string; website: string | null; description: string | null;
   status: string; rating: number; total_reviews: number; logo_url: string | null;
   years_in_business: number | null; verified: boolean | null;
+  availability_status: AvailStatus | null;
 }
 
 export default function SupplierDashboardPage() {
@@ -17,6 +26,10 @@ export default function SupplierDashboardPage() {
   const [saved, setSaved] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({ description: "", website: "", phone: "" });
+  const [avail, setAvail] = useState<AvailStatus>("available");
+  const [availSaving, setAvailSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState("");
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -32,6 +45,7 @@ export default function SupplierDashboardPage() {
     if (data) {
       setSupplier(data as Supplier);
       setForm({ description: data.description ?? "", website: data.website ?? "", phone: data.phone ?? "" });
+      setAvail((data.availability_status ?? "available") as AvailStatus);
     }
     setLoading(false);
   }, []);
@@ -52,6 +66,35 @@ export default function SupplierDashboardPage() {
     setEditMode(false);
     setSaving(false);
     setTimeout(() => setSaved(false), 3000);
+  }
+
+  async function saveAvailability(status: AvailStatus) {
+    if (!supplier) return;
+    setAvail(status);
+    setAvailSaving(true);
+    const supabase = createClient();
+    await supabase.from("suppliers").update({ availability_status: status }).eq("id", supplier.id);
+    setAvailSaving(false);
+  }
+
+  async function uploadLogo(file: File) {
+    if (!supplier) return;
+    setUploading(true); setUploadMsg("");
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("path", `suppliers/${supplier.id}/logo`);
+    const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+    if (res.ok) {
+      const d = await res.json();
+      const supabase = createClient();
+      await supabase.from("suppliers").update({ logo_url: d.url }).eq("id", supplier.id);
+      setSupplier(s => s ? { ...s, logo_url: d.url } : s);
+      setUploadMsg("Logo updated successfully.");
+    } else {
+      setUploadMsg("Upload failed. Please try again.");
+    }
+    setUploading(false);
+    setTimeout(() => setUploadMsg(""), 4000);
   }
 
   if (loading) {
@@ -105,11 +148,50 @@ export default function SupplierDashboardPage() {
       </div>
 
       <div className="container" style={{ padding: "2rem 1.5rem" }}>
-        {saved && (
+        {(saved || uploadMsg) && (
           <div style={{ background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: "var(--radius)", padding: "0.875rem 1.25rem", marginBottom: "1.5rem", color: "#166534", fontWeight: 600, fontSize: "0.9375rem" }}>
-            ✓ Profile updated successfully.
+            ✓ {saved ? "Profile updated successfully." : uploadMsg}
           </div>
         )}
+
+        {/* Availability */}
+        <div className="card" style={{ padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
+          <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>
+            Availability {availSaving && <span style={{ fontWeight: 400, fontSize: "0.7rem" }}>saving…</span>}
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            {(Object.entries(AVAIL_MAP) as [AvailStatus, typeof AVAIL_MAP[AvailStatus]][]).map(([key, val]) => (
+              <button key={key} onClick={() => saveAvailability(key)}
+                style={{
+                  padding: "0.375rem 0.875rem", borderRadius: "999px", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", border: "1.5px solid",
+                  background: avail === key ? val.bg : "white",
+                  color: avail === key ? val.color : "var(--gray-500)",
+                  borderColor: avail === key ? val.color : "var(--gray-200)",
+                }}>
+                {val.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Logo upload */}
+        <div className="card" style={{ padding: "1.5rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1.5rem", flexWrap: "wrap" }}>
+          <div style={{ width: "72px", height: "72px", borderRadius: "var(--radius)", border: "2px solid var(--gray-200)", overflow: "hidden", flexShrink: 0, background: "var(--gray-50)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {supplier.logo_url
+              ? <img src={supplier.logo_url} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : <span style={{ fontSize: "2rem" }}>🏢</span>
+            }
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, color: "var(--navy)", marginBottom: "0.25rem" }}>Company Logo</div>
+            <div style={{ fontSize: "0.875rem", color: "var(--gray-500)", marginBottom: "0.75rem" }}>PNG or JPG, max 5MB. Shown on your public profile.</div>
+            <label style={{ display: "inline-block", padding: "0.5rem 1.125rem", background: uploading ? "var(--gray-200)" : "var(--navy)", color: "white", borderRadius: "var(--radius-sm)", fontWeight: 600, fontSize: "0.875rem", cursor: uploading ? "not-allowed" : "pointer" }}>
+              {uploading ? "Uploading…" : "Upload Logo"}
+              <input type="file" style={{ display: "none" }} accept=".jpg,.jpeg,.png,.webp" disabled={uploading}
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ""; }} />
+            </label>
+          </div>
+        </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem", alignItems: "start" }}>
           {/* Profile Info */}

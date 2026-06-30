@@ -2,6 +2,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+type AvailStatus = "available" | "busy" | "on_vacation" | "not_accepting";
+
+const AVAIL_MAP: Record<AvailStatus, { label: string; color: string; bg: string; dot: string }> = {
+  available:      { label: "Available",              color: "#16a34a", bg: "rgba(22,163,74,0.1)",   dot: "#16a34a" },
+  busy:           { label: "Busy",                   color: "#d97706", bg: "rgba(245,158,11,0.1)",  dot: "#d97706" },
+  on_vacation:    { label: "On Vacation",            color: "#6366f1", bg: "rgba(99,102,241,0.1)",  dot: "#6366f1" },
+  not_accepting:  { label: "Not Accepting Projects", color: "var(--gray-500)", bg: "var(--gray-100)", dot: "var(--gray-400)" },
+};
+
 interface DashboardData {
   contractor: {
     id: string;
@@ -16,6 +25,21 @@ interface DashboardData {
     is_licensed: boolean;
     is_insured: boolean;
     is_background_checked: boolean;
+    description: string | null;
+    website: string | null;
+    facebook_url: string | null;
+    instagram_url: string | null;
+    linkedin_url: string | null;
+    phone: string | null;
+    open_time: string | null;
+    close_time: string | null;
+    working_days: string[];
+    has_emergency: boolean;
+    service_radius: string;
+    additional_states: string[];
+    additional_cities: string | null;
+    years_experience: number;
+    availability_status: AvailStatus;
     contractor_subscriptions: Array<{
       status: string;
       current_period_end: string | null;
@@ -87,6 +111,8 @@ interface ContractorDoc {
   status: string; notes?: string; created_at: string;
 }
 
+const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
 export default function ContractorDashboard() {
   const [data, setData]           = useState<DashboardData | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -97,12 +123,44 @@ export default function ContractorDashboard() {
   const [uploading, setUploading] = useState(false);
   const [docMsg, setDocMsg]       = useState("");
 
+  // Availability
+  const [avail, setAvail]           = useState<AvailStatus>("available");
+  const [availSaving, setAvailSaving] = useState(false);
+
+  // Profile editing
+  const [editOpen, setEditOpen]     = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    description: "", website: "", facebook_url: "", instagram_url: "", linkedin_url: "",
+    phone: "", open_time: "08:00", close_time: "17:00",
+    working_days: [] as string[], has_emergency: false,
+    service_radius: "25", additional_cities: "", years_experience: 0,
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg]       = useState("");
+
   useEffect(() => {
     fetch("/api/dashboard/contractor")
       .then(r => r.json())
       .then(d => {
-        if (d.error) setError(d.error);
-        else setData(d);
+        if (d.error) { setError(d.error); return; }
+        setData(d);
+        const c = d.contractor;
+        setAvail((c.availability_status ?? "available") as AvailStatus);
+        setProfileForm({
+          description:      c.description ?? "",
+          website:          c.website ?? "",
+          facebook_url:     c.facebook_url ?? "",
+          instagram_url:    c.instagram_url ?? "",
+          linkedin_url:     c.linkedin_url ?? "",
+          phone:            c.phone ?? "",
+          open_time:        c.open_time ?? "08:00",
+          close_time:       c.close_time ?? "17:00",
+          working_days:     c.working_days ?? [],
+          has_emergency:    c.has_emergency ?? false,
+          service_radius:   c.service_radius ?? "25",
+          additional_cities: c.additional_cities ?? "",
+          years_experience: c.years_experience ?? 0,
+        });
       })
       .catch(() => setError("Failed to load dashboard"))
       .finally(() => setLoading(false));
@@ -111,6 +169,37 @@ export default function ContractorDashboard() {
       .then(d => setDocs(d.documents ?? []))
       .catch(() => {});
   }, []);
+
+  async function saveAvailability(status: AvailStatus) {
+    setAvail(status);
+    setAvailSaving(true);
+    await fetch("/api/dashboard/contractor", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ availability_status: status }),
+    });
+    setAvailSaving(false);
+  }
+
+  async function saveProfile() {
+    setProfileSaving(true);
+    setProfileMsg("");
+    const res = await fetch("/api/dashboard/contractor", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profileForm),
+    });
+    if (res.ok) {
+      setProfileMsg("Profile updated successfully.");
+      setData(prev => prev ? { ...prev, contractor: { ...prev.contractor, ...profileForm } } : prev);
+      setEditOpen(false);
+    } else {
+      const d = await res.json();
+      setProfileMsg(d.error ?? "Failed to save.");
+    }
+    setProfileSaving(false);
+    setTimeout(() => setProfileMsg(""), 4000);
+  }
 
   async function uploadDoc(file: File) {
     setUploading(true); setDocMsg("");
@@ -221,6 +310,142 @@ export default function ContractorDashboard() {
             <button onClick={openBillingPortal} style={{ padding: "0.5rem 1.25rem", background: "#d97706", color: "white", border: "none", borderRadius: "var(--radius-sm)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: "0.875rem" }}>
               Update Payment Method
             </button>
+          </div>
+        )}
+
+        {/* Availability + Profile quick actions */}
+        {contractor.status === "active" && (
+          <div className="card" style={{ padding: "1.25rem 1.5rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
+                  Availability {availSaving && <span style={{ fontWeight: 400, fontSize: "0.7rem" }}>saving…</span>}
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  {(Object.entries(AVAIL_MAP) as [AvailStatus, typeof AVAIL_MAP[AvailStatus]][]).map(([key, val]) => (
+                    <button key={key} onClick={() => saveAvailability(key)}
+                      style={{
+                        padding: "0.375rem 0.875rem", borderRadius: "999px", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", border: "1.5px solid",
+                        background: avail === key ? val.bg : "white",
+                        color: avail === key ? val.color : "var(--gray-500)",
+                        borderColor: avail === key ? val.color : "var(--gray-200)",
+                      }}>
+                      <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: val.dot, marginRight: "0.375rem", verticalAlign: "middle" }} />
+                      {val.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <button onClick={() => setEditOpen(o => !o)} className="btn-secondary" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>
+              {editOpen ? "Close Editor" : "✏️ Edit Profile"}
+            </button>
+          </div>
+        )}
+
+        {/* Profile editor */}
+        {editOpen && (
+          <div className="card" style={{ padding: "2rem", marginBottom: "1.5rem" }}>
+            <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1.0625rem", marginBottom: "1.75rem" }}>Edit Profile</h2>
+            {profileMsg && (
+              <div style={{ padding: "0.75rem 1rem", marginBottom: "1.25rem", borderRadius: "var(--radius-sm)", fontSize: "0.875rem", background: profileMsg.includes("Failed") ? "rgba(199,25,26,0.08)" : "rgba(22,163,74,0.08)", color: profileMsg.includes("Failed") ? "var(--red)" : "#16a34a", border: `1px solid ${profileMsg.includes("Failed") ? "rgba(199,25,26,0.2)" : "rgba(22,163,74,0.2)"}` }}>
+                {profileMsg}
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+              <div style={{ gridColumn: "1/-1" }}>
+                <label className="form-label">Business Description</label>
+                <textarea className="form-input" rows={4} style={{ resize: "vertical" }}
+                  value={profileForm.description}
+                  onChange={e => setProfileForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="Describe your services, experience, and what makes your business stand out…" />
+              </div>
+              <div>
+                <label className="form-label">Phone Number</label>
+                <input className="form-input" value={profileForm.phone}
+                  onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
+                  placeholder="+1 (555) 000-0000" />
+              </div>
+              <div>
+                <label className="form-label">Website</label>
+                <input className="form-input" value={profileForm.website}
+                  onChange={e => setProfileForm(p => ({ ...p, website: e.target.value }))}
+                  placeholder="https://yourwebsite.com" />
+              </div>
+              <div>
+                <label className="form-label">Facebook URL</label>
+                <input className="form-input" value={profileForm.facebook_url}
+                  onChange={e => setProfileForm(p => ({ ...p, facebook_url: e.target.value }))}
+                  placeholder="https://facebook.com/yourbusiness" />
+              </div>
+              <div>
+                <label className="form-label">Instagram URL</label>
+                <input className="form-input" value={profileForm.instagram_url}
+                  onChange={e => setProfileForm(p => ({ ...p, instagram_url: e.target.value }))}
+                  placeholder="https://instagram.com/yourhandle" />
+              </div>
+              <div>
+                <label className="form-label">Years of Experience</label>
+                <input className="form-input" type="number" min="0" max="100"
+                  value={profileForm.years_experience}
+                  onChange={e => setProfileForm(p => ({ ...p, years_experience: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <label className="form-label">Service Radius (miles)</label>
+                <select className="form-select" value={profileForm.service_radius}
+                  onChange={e => setProfileForm(p => ({ ...p, service_radius: e.target.value }))}>
+                  {["10","25","50","100","Statewide","National"].map(r => <option key={r} value={r}>{r} {parseInt(r) ? "miles" : ""}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Business Hours</label>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                  <input className="form-input" type="time" value={profileForm.open_time}
+                    onChange={e => setProfileForm(p => ({ ...p, open_time: e.target.value }))}
+                    style={{ flex: 1 }} />
+                  <span style={{ color: "var(--gray-400)" }}>to</span>
+                  <input className="form-input" type="time" value={profileForm.close_time}
+                    onChange={e => setProfileForm(p => ({ ...p, close_time: e.target.value }))}
+                    style={{ flex: 1 }} />
+                </div>
+              </div>
+              <div style={{ gridColumn: "1/-1" }}>
+                <label className="form-label">Working Days</label>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  {DAYS.map(d => (
+                    <label key={d} style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.375rem 0.75rem", border: "1.5px solid", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: "0.875rem", fontWeight: 500,
+                      borderColor: profileForm.working_days.includes(d) ? "var(--navy)" : "var(--gray-200)",
+                      background:  profileForm.working_days.includes(d) ? "rgba(22,46,94,0.06)" : "white",
+                      color:       profileForm.working_days.includes(d) ? "var(--navy)" : "var(--gray-500)" }}>
+                      <input type="checkbox" style={{ display: "none" }}
+                        checked={profileForm.working_days.includes(d)}
+                        onChange={e => setProfileForm(p => ({
+                          ...p, working_days: e.target.checked
+                            ? [...p.working_days, d]
+                            : p.working_days.filter(x => x !== d),
+                        }))} />
+                      {d.slice(0, 3)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <input type="checkbox" id="emergency"
+                  checked={profileForm.has_emergency}
+                  onChange={e => setProfileForm(p => ({ ...p, has_emergency: e.target.checked }))} />
+                <label htmlFor="emergency" style={{ fontWeight: 600, color: "var(--gray-700)", fontSize: "0.9375rem", cursor: "pointer" }}>
+                  Available for emergency / after-hours calls
+                </label>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.75rem", paddingTop: "1.5rem", borderTop: "1px solid var(--gray-100)" }}>
+              <button onClick={saveProfile} disabled={profileSaving} className="btn-red" style={{ padding: "0.875rem 2rem", opacity: profileSaving ? 0.7 : 1 }}>
+                {profileSaving ? "Saving…" : "Save Changes"}
+              </button>
+              <button onClick={() => setEditOpen(false)} className="btn-secondary" style={{ padding: "0.875rem 1.5rem" }}>
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
