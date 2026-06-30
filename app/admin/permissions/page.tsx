@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 
 type Role = "homeowner" | "contractor" | "supplier" | "editor" | "support" | "super_admin";
 type Permission = { action: string; homeowner: boolean; contractor: boolean; supplier: boolean; editor: boolean; support: boolean; super_admin: boolean; };
@@ -111,8 +112,8 @@ export default function PermissionsPage() {
           </thead>
           <tbody>
             {PERMISSIONS.map((group, gi) => (
-              <>
-                <tr key={`g${gi}`} style={{ background: "rgba(22,46,94,0.03)" }}>
+              <React.Fragment key={`g${gi}`}>
+                <tr style={{ background: "rgba(22,46,94,0.03)" }}>
                   <td colSpan={roles.length + 1} style={{ padding: "0.625rem 1.25rem", fontSize: "0.75rem", fontWeight: 700, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                     {group.category}
                   </td>
@@ -130,7 +131,7 @@ export default function PermissionsPage() {
                     ))}
                   </tr>
                 ))}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
