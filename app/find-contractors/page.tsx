@@ -111,6 +111,7 @@ function FindContractorsContent() {
   const params    = useSearchParams();
   const queryTerm = params.get("q") ?? "";
   const zipTerm   = params.get("zip") ?? "";
+  const stateTerm = params.get("state") ?? "";
 
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [total,       setTotal]       = useState(0);
@@ -129,6 +130,7 @@ function FindContractorsContent() {
       const sp = new URLSearchParams();
       if (queryTerm)   sp.set("q", queryTerm);
       if (zipTerm)     sp.set("zip", zipTerm);
+      if (stateTerm)   sp.set("state", stateTerm);
       if (category)    sp.set("category", category);
       if (sort)        sp.set("sort", sort === "rating" ? "rating" : sort === "reviews" ? "rating" : sort);
       if (reqLicensed) sp.set("licensed", "true");
@@ -154,7 +156,7 @@ function FindContractorsContent() {
     } finally {
       setLoading(false);
     }
-  }, [queryTerm, zipTerm, category, sort, minRating, reqLicensed, reqInsured, reqVerified]);
+  }, [queryTerm, zipTerm, stateTerm, category, sort, minRating, reqLicensed, reqInsured, reqVerified]);
 
   useEffect(() => { fetchContractors(); }, [fetchContractors]);
 

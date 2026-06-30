@@ -50,7 +50,7 @@ export async function GET(request: Request) {
       .eq("status", "active");
 
     if (category) query = query.eq("category", category);
-    if (state)    query = query.eq("state_code", state.toUpperCase());
+    if (state)    query = query.or(`state_code.eq.${state.toUpperCase()},additional_states.cs.{${state.toUpperCase()}}`);
     if (city)     query = query.ilike("city", `%${city}%`);
     if (licensed) query = query.eq("is_licensed", true);
     if (insured)  query = query.eq("is_insured", true);

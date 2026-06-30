@@ -90,6 +90,7 @@ export default function SearchBar({ variant = "hero", defaultCategory = "", defa
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     if (zip.trim())   params.set("zip", zip.trim());
+    if (zipInfo?.stateCode) params.set("state", zipInfo.stateCode);
     router.push(`/find-contractors?${params.toString()}`);
     setShowDrop(false);
   };
