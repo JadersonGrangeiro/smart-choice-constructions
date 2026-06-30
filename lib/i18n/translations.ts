@@ -228,8 +228,10 @@ export const translations = {
         { label: "FAQ",           href: "/faq" },
       ],
       contractorLinks: [
-        { label: "Join Our Network", href: "/join" },
-        { label: "View Plans",       href: "/pricing" },
+        { label: "Join Our Network",  href: "/join" },
+        { label: "For Providers",     href: "/for-providers" },
+        { label: "Join as Supplier",  href: "/join/supplier" },
+        { label: "View Plans",        href: "/pricing" },
       ],
       legalLinks: [
         { label: "Privacy Policy",  href: "/privacy" },
@@ -490,8 +492,10 @@ export const translations = {
         { label: "Preguntas",     href: "/faq" },
       ],
       contractorLinks: [
-        { label: "Unirse a la Red", href: "/join" },
-        { label: "Ver Planes",      href: "/pricing" },
+        { label: "Unirse a la Red",    href: "/join" },
+        { label: "Para Proveedores",   href: "/for-providers" },
+        { label: "Unirse (Proveedor)", href: "/join/supplier" },
+        { label: "Ver Planes",         href: "/pricing" },
       ],
       legalLinks: [
         { label: "Privacidad",     href: "/privacy" },

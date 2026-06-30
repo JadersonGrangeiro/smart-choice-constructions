@@ -507,7 +507,46 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FAQ JSON-LD */}
+      {/* ── SUPPLIER JOIN CTA ── */}
+      <section style={{ background: "var(--gray-50)", padding: "3.5rem 0", borderTop: "1px solid var(--gray-100)" }}>
+        <div className="container">
+          <div style={{ background: "linear-gradient(135deg, var(--navy) 0%, #1e3a5f 100%)", borderRadius: "var(--radius-2xl)", padding: "2.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "2rem", flexWrap: "wrap" }}>
+            <div>
+              <div style={{ display: "inline-block", background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.9)", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "0.25rem 0.75rem", borderRadius: "999px", marginBottom: "0.875rem" }}>
+                For Building Supply Businesses
+              </div>
+              <h2 style={{ fontWeight: 800, color: "white", fontSize: "1.375rem", marginBottom: "0.5rem" }}>
+                Are you a supplier or materials dealer?
+              </h2>
+              <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "0.9375rem", margin: 0 }}>
+                Get discovered by local contractors for free. No credit card required.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "0.875rem", flexShrink: 0, flexWrap: "wrap" }}>
+              <Link href="/join/supplier" style={{ background: "white", color: "var(--navy)", fontWeight: 700, padding: "0.75rem 1.5rem", borderRadius: "var(--radius)", textDecoration: "none", fontSize: "0.9375rem" }}>
+                List Your Business — Free →
+              </Link>
+              <Link href="/for-providers" style={{ background: "transparent", color: "rgba(255,255,255,0.8)", fontWeight: 600, padding: "0.75rem 1.25rem", borderRadius: "var(--radius)", textDecoration: "none", fontSize: "0.9375rem", border: "1px solid rgba(255,255,255,0.2)" }}>
+                Learn More
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ + HomepageService JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{__html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: t.faq.slice(0, 6).map(faq => ({
+            "@type": "Question",
+            name: faq.question,
+            acceptedAnswer: { "@type": "Answer", text: faq.answer },
+          })),
+        })}}
+      />
       <style>{`
         @media (max-width: 768px) {
           .hero-grid { grid-template-columns: 1fr !important; }

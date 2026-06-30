@@ -11,6 +11,33 @@ const AVAIL_MAP: Record<AvailStatus, { label: string; color: string; bg: string;
   not_accepting:  { label: "Not Accepting Projects", color: "var(--gray-500)", bg: "var(--gray-100)", dot: "var(--gray-400)" },
 };
 
+interface QuoteLead {
+  id: string;
+  service_type: string;
+  description: string | null;
+  budget_range: string | null;
+  contact_name: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+  city: string | null;
+  state_code: string | null;
+  zip_code: string | null;
+  status: string;
+  created_at: string;
+}
+
+interface Review {
+  id: string;
+  rating: number;
+  reviewer_name: string;
+  title: string | null;
+  body: string;
+  project_type: string | null;
+  contractor_reply: string | null;
+  contractor_reply_at: string | null;
+  created_at: string;
+}
+
 interface DashboardData {
   contractor: {
     id: string;
@@ -22,6 +49,7 @@ interface DashboardData {
     state_code: string;
     city: string;
     ranking_score: number;
+    avatar_url: string | null;
     is_licensed: boolean;
     is_insured: boolean;
     is_background_checked: boolean;
@@ -55,22 +83,8 @@ interface DashboardData {
     profile_views: number;
     ranking_score: number;
   };
-  recent_quotes: Array<{
-    id: string;
-    service_type: string;
-    contact_name: string;
-    city: string | null;
-    state_code: string | null;
-    status: string;
-    created_at: string;
-  }>;
-  recent_reviews: Array<{
-    id: string;
-    rating: number;
-    reviewer_name: string;
-    body: string;
-    created_at: string;
-  }>;
+  recent_quotes:  QuoteLead[];
+  recent_reviews: Review[];
   payments: Array<{
     id: string;
     event_type: string;
@@ -113,6 +127,22 @@ interface ContractorDoc {
 
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
+function LeadStatusBadge({ status }: { status: string }) {
+  const map: Record<string, { color: string; bg: string }> = {
+    pending:   { color: "#d97706", bg: "rgba(245,158,11,0.1)" },
+    viewed:    { color: "#6366f1", bg: "rgba(99,102,241,0.1)" },
+    responded: { color: "#16a34a", bg: "rgba(22,163,74,0.1)" },
+    completed: { color: "#0369a1", bg: "rgba(3,105,161,0.1)" },
+    declined:  { color: "var(--gray-500)", bg: "var(--gray-100)" },
+  };
+  const s = map[status] ?? map.pending;
+  return (
+    <span style={{ background: s.bg, color: s.color, padding: "0.15rem 0.625rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 700, textTransform: "capitalize" }}>
+      {status}
+    </span>
+  );
+}
+
 export default function ContractorDashboard() {
   const [data, setData]           = useState<DashboardData | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -124,12 +154,12 @@ export default function ContractorDashboard() {
   const [docMsg, setDocMsg]       = useState("");
 
   // Availability
-  const [avail, setAvail]           = useState<AvailStatus>("available");
-  const [availSaving, setAvailSaving] = useState(false);
+  const [avail, setAvail]               = useState<AvailStatus>("available");
+  const [availSaving, setAvailSaving]   = useState(false);
 
   // Profile editing
-  const [editOpen, setEditOpen]     = useState(false);
-  const [profileForm, setProfileForm] = useState({
+  const [editOpen, setEditOpen]         = useState(false);
+  const [profileForm, setProfileForm]   = useState({
     description: "", website: "", facebook_url: "", instagram_url: "", linkedin_url: "",
     phone: "", open_time: "08:00", close_time: "17:00",
     working_days: [] as string[], has_emergency: false,
@@ -137,6 +167,21 @@ export default function ContractorDashboard() {
   });
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg]       = useState("");
+
+  // Avatar upload
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarMsg, setAvatarMsg]             = useState("");
+  const [currentAvatar, setCurrentAvatar]     = useState<string | null>(null);
+
+  // Lead detail modal
+  const [selectedLead, setSelectedLead] = useState<QuoteLead | null>(null);
+
+  // Review replies
+  const [replyOpen,  setReplyOpen]  = useState<Record<string, boolean>>({});
+  const [replyText,  setReplyText]  = useState<Record<string, string>>({});
+  const [replySaving, setReplySaving] = useState<Record<string, boolean>>({});
+  const [replyMsg,   setReplyMsg]   = useState<Record<string, string>>({});
+  const [reviews,    setReviews]    = useState<Review[]>([]);
 
   useEffect(() => {
     fetch("/api/dashboard/contractor")
@@ -146,6 +191,7 @@ export default function ContractorDashboard() {
         setData(d);
         const c = d.contractor;
         setAvail((c.availability_status ?? "available") as AvailStatus);
+        setCurrentAvatar(c.avatar_url ?? null);
         setProfileForm({
           description:      c.description ?? "",
           website:          c.website ?? "",
@@ -161,6 +207,11 @@ export default function ContractorDashboard() {
           additional_cities: c.additional_cities ?? "",
           years_experience: c.years_experience ?? 0,
         });
+        const rv = d.recent_reviews ?? [];
+        setReviews(rv);
+        const initialText: Record<string, string> = {};
+        rv.forEach((r: Review) => { initialText[r.id] = r.contractor_reply ?? ""; });
+        setReplyText(initialText);
       })
       .catch(() => setError("Failed to load dashboard"))
       .finally(() => setLoading(false));
@@ -201,6 +252,31 @@ export default function ContractorDashboard() {
     setTimeout(() => setProfileMsg(""), 4000);
   }
 
+  async function uploadAvatar(file: File) {
+    setAvatarUploading(true);
+    setAvatarMsg("");
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("folder", "contractor-avatars");
+    const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+    const d = await res.json();
+    if (!res.ok || !d.url) { setAvatarMsg(d.error ?? "Upload failed."); setAvatarUploading(false); return; }
+
+    const patchRes = await fetch("/api/dashboard/contractor/avatar", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ avatar_url: d.url }),
+    });
+    if (patchRes.ok) {
+      setCurrentAvatar(d.url);
+      setAvatarMsg("Profile photo updated!");
+    } else {
+      setAvatarMsg("Photo uploaded but profile not updated. Please try again.");
+    }
+    setAvatarUploading(false);
+    setTimeout(() => setAvatarMsg(""), 4000);
+  }
+
   async function uploadDoc(file: File) {
     setUploading(true); setDocMsg("");
     const fd = new FormData();
@@ -221,6 +297,45 @@ export default function ContractorDashboard() {
     if (!confirm("Remove this document?")) return;
     await fetch(`/api/dashboard/contractor/documents?id=${id}`, { method: "DELETE" });
     setDocs(prev => prev.filter(d => d.id !== id));
+  }
+
+  async function saveReply(reviewId: string) {
+    setReplySaving(p => ({ ...p, [reviewId]: true }));
+    setReplyMsg(p => ({ ...p, [reviewId]: "" }));
+    const res = await fetch("/api/dashboard/contractor/reviews", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ review_id: reviewId, reply: replyText[reviewId] ?? "" }),
+    });
+    if (res.ok) {
+      const txt = replyText[reviewId]?.trim() ?? "";
+      setReviews(prev => prev.map(r => r.id === reviewId
+        ? { ...r, contractor_reply: txt || null, contractor_reply_at: txt ? new Date().toISOString() : null }
+        : r
+      ));
+      setReplyOpen(p => ({ ...p, [reviewId]: false }));
+      setReplyMsg(p => ({ ...p, [reviewId]: txt ? "Reply saved." : "Reply removed." }));
+    } else {
+      const d = await res.json();
+      setReplyMsg(p => ({ ...p, [reviewId]: d.error ?? "Failed to save reply." }));
+    }
+    setReplySaving(p => ({ ...p, [reviewId]: false }));
+    setTimeout(() => setReplyMsg(p => ({ ...p, [reviewId]: "" })), 4000);
+  }
+
+  async function openLeadDetail(lead: QuoteLead) {
+    setSelectedLead(lead);
+    if (lead.status === "pending") {
+      await fetch("/api/dashboard/contractor/leads", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quote_id: lead.id, status: "viewed" }),
+      }).catch(() => {});
+      setData(prev => {
+        if (!prev) return prev;
+        return { ...prev, recent_quotes: prev.recent_quotes.map(q => q.id === lead.id ? { ...q, status: "viewed" } : q) };
+      });
+    }
   }
 
   const openBillingPortal = async () => {
@@ -254,24 +369,141 @@ export default function ContractorDashboard() {
     );
   }
 
-  const { contractor, stats, recent_quotes, recent_reviews } = data;
+  const { contractor, stats, recent_quotes } = data;
   const sub = contractor.contractor_subscriptions[0];
+  const initials = contractor.company_name.slice(0, 2).toUpperCase();
 
   return (
     <div style={{ paddingTop: "76px", minHeight: "100vh", background: "var(--gray-50)" }}>
+
+      {/* Lead detail modal */}
+      {selectedLead && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+          onClick={e => { if (e.target === e.currentTarget) setSelectedLead(null); }}
+        >
+          <div style={{ background: "white", borderRadius: "var(--radius-xl)", padding: "2rem", maxWidth: "560px", width: "100%", maxHeight: "90vh", overflow: "auto", boxShadow: "var(--shadow-xl)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
+              <div>
+                <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1.25rem", marginBottom: "0.375rem" }}>{selectedLead.service_type}</h2>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <LeadStatusBadge status={selectedLead.status} />
+                  <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>{new Date(selectedLead.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <button onClick={() => setSelectedLead(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.5rem", color: "var(--gray-400)", padding: "0", lineHeight: 1 }}>×</button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              {/* Contact info */}
+              <div style={{ background: "var(--gray-50)", borderRadius: "var(--radius)", padding: "1.25rem" }}>
+                <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "0.875rem", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.875rem" }}>Contact Info</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <span style={{ fontSize: "1rem" }}>👤</span>
+                    <span style={{ fontWeight: 600, color: "var(--gray-800)" }}>{selectedLead.contact_name}</span>
+                  </div>
+                  {selectedLead.contact_phone && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <span style={{ fontSize: "1rem" }}>📞</span>
+                      <a href={`tel:${selectedLead.contact_phone}`} style={{ color: "var(--navy)", fontWeight: 600, textDecoration: "none" }}>{selectedLead.contact_phone}</a>
+                    </div>
+                  )}
+                  {selectedLead.contact_email && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <span style={{ fontSize: "1rem" }}>✉️</span>
+                      <a href={`mailto:${selectedLead.contact_email}`} style={{ color: "var(--navy)", fontWeight: 600, textDecoration: "none", wordBreak: "break-all" }}>{selectedLead.contact_email}</a>
+                    </div>
+                  )}
+                  {(selectedLead.city || selectedLead.state_code) && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <span style={{ fontSize: "1rem" }}>📍</span>
+                      <span style={{ color: "var(--gray-600)" }}>
+                        {[selectedLead.city, selectedLead.state_code, selectedLead.zip_code].filter(Boolean).join(", ")}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Project details */}
+              {(selectedLead.description || selectedLead.budget_range) && (
+                <div style={{ background: "var(--gray-50)", borderRadius: "var(--radius)", padding: "1.25rem" }}>
+                  <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "0.875rem", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.875rem" }}>Project Details</div>
+                  {selectedLead.budget_range && (
+                    <div style={{ display: "flex", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                      <span style={{ fontWeight: 600, color: "var(--gray-600)", minWidth: "80px" }}>Budget:</span>
+                      <span style={{ color: "var(--gray-800)", fontWeight: 600 }}>{selectedLead.budget_range}</span>
+                    </div>
+                  )}
+                  {selectedLead.description && (
+                    <div>
+                      <div style={{ fontWeight: 600, color: "var(--gray-600)", marginBottom: "0.375rem" }}>Description:</div>
+                      <p style={{ color: "var(--gray-700)", lineHeight: 1.7, margin: 0, fontSize: "0.9375rem" }}>{selectedLead.description}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                {selectedLead.contact_phone && (
+                  <a href={`tel:${selectedLead.contact_phone}`} className="btn-red" style={{ flex: 1, textAlign: "center", padding: "0.75rem", fontSize: "0.9375rem", textDecoration: "none" }}>
+                    📞 Call Now
+                  </a>
+                )}
+                {selectedLead.contact_email && (
+                  <a href={`mailto:${selectedLead.contact_email}?subject=Re: ${encodeURIComponent(selectedLead.service_type)} Quote Request`} className="btn-secondary" style={{ flex: 1, textAlign: "center", padding: "0.75rem", fontSize: "0.9375rem", textDecoration: "none" }}>
+                    ✉️ Send Email
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container" style={{ maxWidth: "1100px", padding: "2.5rem 1.5rem" }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
-          <div>
-            <h1 style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--navy)", marginBottom: "0.5rem" }}>
-              Welcome, {contractor.owner_first_name}
-            </h1>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <StatusChip status={contractor.status} />
-              {contractor.profile_visible && (
-                <span style={{ fontSize: "0.8125rem", color: "#16a34a", fontWeight: 600 }}>● Profile is live</span>
-              )}
+          <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
+            {/* Avatar */}
+            <div style={{ position: "relative" }}>
+              <div style={{
+                width: "64px", height: "64px", borderRadius: "50%", flexShrink: 0,
+                background: currentAvatar ? "transparent" : "var(--navy)",
+                backgroundImage: currentAvatar ? `url(${currentAvatar})` : "none",
+                backgroundSize: "cover", backgroundPosition: "center",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "white", fontWeight: 800, fontSize: "1.25rem",
+                border: "3px solid white", boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              }}>
+                {!currentAvatar && initials}
+              </div>
+              <label title="Change profile photo" style={{
+                position: "absolute", bottom: -2, right: -2,
+                width: "22px", height: "22px", borderRadius: "50%",
+                background: "var(--navy)", color: "white",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: avatarUploading ? "not-allowed" : "pointer",
+                fontSize: "0.625rem", border: "2px solid white",
+              }}>
+                {avatarUploading ? "…" : "✏️"}
+                <input type="file" accept="image/*" style={{ display: "none" }} disabled={avatarUploading}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); e.target.value = ""; }} />
+              </label>
+            </div>
+            <div>
+              <h1 style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--navy)", marginBottom: "0.5rem" }}>
+                Welcome, {contractor.owner_first_name}
+              </h1>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                <StatusChip status={contractor.status} />
+                {contractor.profile_visible && (
+                  <span style={{ fontSize: "0.8125rem", color: "#16a34a", fontWeight: 600 }}>● Profile is live</span>
+                )}
+              </div>
+              {avatarMsg && <div style={{ fontSize: "0.8125rem", color: avatarMsg.includes("!") ? "#16a34a" : "var(--red)", marginTop: "0.375rem" }}>{avatarMsg}</div>}
             </div>
           </div>
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
@@ -466,9 +698,12 @@ export default function ContractorDashboard() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-          {/* Recent leads */}
+          {/* Recent leads — clickable */}
           <div className="card" style={{ padding: "1.75rem" }}>
-            <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "1.25rem" }}>Recent Quote Requests</h2>
+            <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "1.25rem" }}>
+              Recent Quote Requests
+              <span style={{ fontWeight: 400, color: "var(--gray-400)", fontSize: "0.8125rem", marginLeft: "0.5rem" }}>Click to view details</span>
+            </h2>
             {recent_quotes.length === 0 ? (
               <p style={{ color: "var(--gray-400)", fontSize: "0.9rem", textAlign: "center", padding: "2rem 0" }}>
                 No leads yet. Keep your profile complete to rank higher.
@@ -476,38 +711,90 @@ export default function ContractorDashboard() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 {recent_quotes.map(q => (
-                  <div key={q.id} style={{ padding: "0.75rem", background: "var(--gray-50)", borderRadius: "var(--radius-sm)", border: "1px solid var(--gray-100)" }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--navy)" }}>{q.service_type}</div>
-                    <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)", marginTop: "0.125rem" }}>
-                      {q.contact_name} · {q.city}, {q.state_code}
+                  <button key={q.id} onClick={() => openLeadDetail(q)}
+                    style={{ width: "100%", textAlign: "left", padding: "0.875rem 1rem", background: "var(--gray-50)", borderRadius: "var(--radius-sm)", border: "1px solid var(--gray-100)", cursor: "pointer", transition: "border-color 0.15s, background 0.15s", fontFamily: "inherit" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--navy)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(22,46,94,0.03)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--gray-100)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--gray-50)"; }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+                      <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--navy)" }}>{q.service_type}</div>
+                      <LeadStatusBadge status={q.status} />
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--gray-400)", marginTop: "0.25rem" }}>
+                    <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)", marginTop: "0.25rem" }}>
+                      {q.contact_name} · {[q.city, q.state_code].filter(Boolean).join(", ")}
+                    </div>
+                    {q.budget_range && (
+                      <div style={{ fontSize: "0.75rem", color: "var(--gray-400)", marginTop: "0.125rem" }}>Budget: {q.budget_range}</div>
+                    )}
+                    <div style={{ fontSize: "0.75rem", color: "var(--gray-400)", marginTop: "0.125rem" }}>
                       {new Date(q.created_at).toLocaleDateString()}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Recent reviews */}
+          {/* Reviews with reply */}
           <div className="card" style={{ padding: "1.75rem" }}>
             <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "1.25rem" }}>Recent Reviews</h2>
-            {recent_reviews.length === 0 ? (
+            {reviews.length === 0 ? (
               <p style={{ color: "var(--gray-400)", fontSize: "0.9rem", textAlign: "center", padding: "2rem 0" }}>No reviews yet.</p>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
-                {recent_reviews.map(r => (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                {reviews.map(r => (
                   <div key={r.id} style={{ padding: "0.875rem", background: "var(--gray-50)", borderRadius: "var(--radius-sm)", border: "1px solid var(--gray-100)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.375rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.375rem", flexWrap: "wrap" }}>
                       <div style={{ display: "flex", gap: "1px" }}>
                         {[1,2,3,4,5].map(i => <span key={i} style={{ color: i <= r.rating ? "#f59e0b" : "var(--gray-200)", fontSize: "0.875rem" }}>★</span>)}
                       </div>
                       <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--navy)" }}>{r.reviewer_name}</span>
+                      {r.project_type && <span style={{ fontSize: "0.75rem", color: "var(--gray-400)" }}>{r.project_type}</span>}
                     </div>
+                    {r.title && <div style={{ fontWeight: 600, color: "var(--navy)", fontSize: "0.875rem", marginBottom: "0.25rem" }}>{r.title}</div>}
                     <p style={{ fontSize: "0.875rem", color: "var(--gray-600)", lineHeight: 1.55, margin: 0 }}>
-                      {r.body.length > 100 ? r.body.slice(0, 100) + "…" : r.body}
+                      {r.body.length > 120 ? r.body.slice(0, 117) + "…" : r.body}
                     </p>
+
+                    {/* Existing reply */}
+                    {r.contractor_reply && !replyOpen[r.id] && (
+                      <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid var(--gray-150)" }}>
+                        <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.375rem" }}>Your Reply</div>
+                        <p style={{ fontSize: "0.8125rem", color: "var(--gray-600)", lineHeight: 1.55, margin: 0 }}>{r.contractor_reply}</p>
+                      </div>
+                    )}
+
+                    {/* Reply editor */}
+                    {replyOpen[r.id] ? (
+                      <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid var(--gray-150)" }}>
+                        <textarea
+                          rows={3}
+                          value={replyText[r.id] ?? ""}
+                          onChange={e => setReplyText(p => ({ ...p, [r.id]: e.target.value }))}
+                          placeholder="Write a professional response to this review…"
+                          style={{ width: "100%", padding: "0.625rem 0.75rem", border: "1.5px solid var(--gray-200)", borderRadius: "var(--radius-sm)", fontFamily: "inherit", fontSize: "0.8125rem", resize: "vertical", boxSizing: "border-box" }}
+                        />
+                        {replyMsg[r.id] && <div style={{ fontSize: "0.75rem", color: replyMsg[r.id].includes("Failed") ? "var(--red)" : "#16a34a", marginTop: "0.25rem" }}>{replyMsg[r.id]}</div>}
+                        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+                          <button onClick={() => saveReply(r.id)} disabled={replySaving[r.id]}
+                            style={{ padding: "0.375rem 0.875rem", background: "var(--navy)", color: "white", border: "none", borderRadius: "var(--radius-sm)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", fontSize: "0.8125rem", opacity: replySaving[r.id] ? 0.7 : 1 }}>
+                            {replySaving[r.id] ? "Saving…" : "Save Reply"}
+                          </button>
+                          <button onClick={() => setReplyOpen(p => ({ ...p, [r.id]: false }))}
+                            style={{ padding: "0.375rem 0.75rem", background: "none", border: "1.5px solid var(--gray-200)", borderRadius: "var(--radius-sm)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", fontSize: "0.8125rem", color: "var(--gray-600)" }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: "0.625rem" }}>
+                        {replyMsg[r.id] && <div style={{ fontSize: "0.75rem", color: replyMsg[r.id].includes("Failed") ? "var(--red)" : "#16a34a", marginBottom: "0.375rem" }}>{replyMsg[r.id]}</div>}
+                        <button onClick={() => { setReplyOpen(p => ({ ...p, [r.id]: true })); setReplyText(p => ({ ...p, [r.id]: r.contractor_reply ?? "" })); }}
+                          style={{ padding: "0.25rem 0.75rem", background: "none", border: "1.5px solid var(--gray-200)", borderRadius: "var(--radius-sm)", cursor: "pointer", fontFamily: "inherit", fontSize: "0.75rem", color: "var(--gray-500)", fontWeight: 600 }}>
+                          {r.contractor_reply ? "✏️ Edit Reply" : "💬 Reply to Review"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

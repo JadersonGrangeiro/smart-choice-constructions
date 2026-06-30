@@ -94,19 +94,19 @@ export async function GET() {
     // Get quote requests
     const { data: quotes, count: quoteCount } = await admin
       .from("quote_requests")
-      .select("id, service_type, contact_name, city, state_code, status, created_at", { count: "exact" })
+      .select("id, service_type, description, budget_range, contact_name, contact_email, contact_phone, city, state_code, zip_code, status, created_at", { count: "exact" })
       .eq("contractor_id", contractor.id)
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(20);
 
     // Get reviews
     const { data: reviews, count: reviewCount } = await admin
       .from("reviews")
-      .select("id, rating, reviewer_name, body, created_at", { count: "exact" })
+      .select("id, rating, reviewer_name, title, body, project_type, contractor_reply, contractor_reply_at, created_at", { count: "exact" })
       .eq("contractor_id", contractor.id)
       .eq("is_published", true)
       .order("created_at", { ascending: false })
-      .limit(5);
+      .limit(10);
 
     const avgRating = reviews && reviews.length > 0
       ? reviews.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / reviews.length
