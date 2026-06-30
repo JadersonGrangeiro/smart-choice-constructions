@@ -116,7 +116,7 @@ export default async function SupplierStatePage({ params }: { params: Promise<{ 
           </section>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3rem" }}>
+        <div className="grid-2col-sidebar" style={{ gridTemplateColumns: "1fr 1fr" }}>
           {/* Categories */}
           <section>
             <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "var(--navy)", marginBottom: "1.5rem" }}>

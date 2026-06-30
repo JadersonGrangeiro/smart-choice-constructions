@@ -41,7 +41,7 @@ export default function ContactPage() {
       </div>
 
       <div className="container" style={{ padding: "3rem 1.5rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "3rem" }}>
+        <div className="grid-2col-sidebar grid-2col-sidebar-lg" style={{ gridTemplateColumns: "2fr 1fr" }}>
           <div className="card" style={{ padding: "2.5rem" }}>
             <h2 style={{ fontSize: "1.375rem", fontWeight: 700, color: "var(--navy)", marginBottom: "2rem" }}>{c.formTitle}</h2>
 
@@ -60,7 +60,7 @@ export default function ContactPage() {
                     {error}
                   </div>
                 )}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div className="grid-2col">
                   <div>
                     <label className="form-label">{c.firstName} *</label>
                     <input placeholder="John" className="form-input" value={form.firstName} onChange={set("firstName")} required />

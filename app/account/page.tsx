@@ -196,7 +196,7 @@ export default function AccountPage() {
 
         {/* ── OVERVIEW ── */}
         {tab === "overview" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.5rem" }}>
+          <div className="grid-3col" style={{ gap: "1.5rem" }}>
             {[
               { icon: "❤️", label: "Saved Contractors", value: favorites.length,  tab: "favorites" as Tab },
               { icon: "📋", label: "Quote Requests",    value: quotes.length,     tab: "history"   as Tab },

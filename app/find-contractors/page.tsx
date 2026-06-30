@@ -188,7 +188,7 @@ function FindContractorsContent() {
       </div>
 
       <div className="container" style={{ padding: "2rem 1.5rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: "2rem" }}>
+        <div className="grid-sidebar-outer" style={{ gridTemplateColumns: "260px 1fr" }}>
           {/* Sidebar filters */}
           <div className="hide-mobile">
             <div className="card" style={{ padding: "1.5rem", marginBottom: "1rem" }}>

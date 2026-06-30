@@ -71,7 +71,7 @@ function FindSuppliersContent() {
       </div>
 
       <div className="container" style={{ padding: "2rem 1.5rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: "2rem" }}>
+        <div className="grid-sidebar-outer" style={{ gridTemplateColumns: "240px 1fr" }}>
           {/* Filters */}
           <div className="hide-mobile">
             <div className="card" style={{ padding: "1.5rem" }}>
@@ -138,7 +138,7 @@ function FindSuppliersContent() {
                   const location = [s.city, s.state_code].filter(Boolean).join(", ");
                   return (
                     <div key={s.id} className="card" style={{ padding: "1.5rem" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: "1.25rem", alignItems: "start" }}>
+                      <div className="search-card-layout">
                         <div style={{ width: "56px", height: "56px", background: `${cat?.color ?? "var(--navy)"}18`, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
                           {cat?.icon ?? "🏢"}
                         </div>
@@ -157,7 +157,7 @@ function FindSuppliersContent() {
                             </p>
                           )}
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", flexShrink: 0 }}>
+                        <div className="search-card-actions">
                           <Link href={`/suppliers/profile/${s.id}`} className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>View Profile</Link>
                           {s.phone && (
                             <a href={`tel:${s.phone}`} className="btn-secondary" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>Call</a>

@@ -75,7 +75,7 @@ export default async function CityServicePage({ params }: { params: Promise<{ st
       </div>
 
       <div className="container" style={{ padding: "3rem 1.5rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "3rem" }}>
+        <div className="grid-2col-sidebar grid-2col-sidebar-lg" style={{ gridTemplateColumns: "2fr 1fr" }}>
           <div>
             {/* About */}
             <div className="card" style={{ padding: "2rem", marginBottom: "1.5rem" }}>

@@ -22,7 +22,7 @@ export default function PricingPage() {
 
       <section style={{ padding: "4rem 0", background: "var(--gray-50)" }}>
         <div className="container" style={{ maxWidth: "960px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: "2rem", alignItems: "start" }}>
+          <div className="grid-2col-sidebar" style={{ gridTemplateColumns: "1.1fr 1fr", alignItems: "start" }}>
             {/* Plan card */}
             <div className="pricing-card featured">
               <div style={{ position: "absolute", top: "-14px", left: "50%", transform: "translateX(-50%)", background: "var(--red)", color: "white", padding: "0.375rem 1.25rem", borderRadius: "999px", fontSize: "0.8125rem", fontWeight: 700, whiteSpace: "nowrap" }}>

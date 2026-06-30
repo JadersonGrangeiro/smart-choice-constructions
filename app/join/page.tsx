@@ -86,7 +86,7 @@ function Step1({ onNext }: { onNext: (d: Step1Data) => void }) {
       <h2 style={{ fontSize: "1.375rem", fontWeight: 700, color: "var(--navy)", marginBottom: "0.5rem" }}>Create Your Account</h2>
       <p style={{ color: "var(--gray-500)", marginBottom: "2rem", fontSize: "0.9375rem" }}>You'll use this to log in and manage your profile.</p>
       <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div className="grid-2col">
           <FormField label="First Name" required error={errors.firstName}>
             <StyledInput placeholder="John" value={d.firstName} onChange={set("firstName")} hasError={!!errors.firstName} />
           </FormField>
@@ -153,7 +153,7 @@ function Step2({ onNext, onBack }: { onNext: (d: Step2Data) => void; onBack: () 
         <FormField label="Primary Service Category" required error={errors.category} hint="You can add more service types after registration.">
           <StyledSelect options={catOptions} placeholder="Select your main service" value={d.category} onChange={set("category")} hasError={!!errors.category} />
         </FormField>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div className="grid-2col">
           <FormField label="State" required error={errors.state}>
             <StyledSelect options={stateOptions} placeholder="Select state" value={d.state} onChange={set("state")} hasError={!!errors.state} />
           </FormField>
@@ -424,7 +424,7 @@ function Step5({ onNext, onBack }: { onNext: (d: Step5Data) => void; onBack: () 
           <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-700)", display: "block", marginBottom: "0.875rem" }}>
             Service Radius from Your City *
           </label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem" }}>
+          <div className="grid-2col" style={{ gap: "0.625rem" }}>
             {radiusOptions.map(opt => {
               const active = d.serviceRadius === opt.value;
               return (

@@ -177,7 +177,7 @@ export default async function SuppliersPage() {
         </section>
 
         {/* Value prop for contractors */}
-        <div style={{ background: "linear-gradient(135deg, var(--navy), #1c3875)", borderRadius: "var(--radius-xl)", padding: "3rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3rem", alignItems: "center" }}>
+        <div className="grid-2col-sidebar" style={{ background: "linear-gradient(135deg, var(--navy), #1c3875)", borderRadius: "var(--radius-xl)", padding: "3rem", gridTemplateColumns: "1fr 1fr", alignItems: "center" }}>
           <div>
             <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.1)", borderRadius: "999px", padding: "0.375rem 0.875rem", marginBottom: "1.25rem" }}>
               <span style={{ fontSize: "1.125rem" }}>🔧</span>

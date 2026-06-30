@@ -163,7 +163,7 @@ export default function RequestQuotePage() {
               </div>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="grid-2col">
                 <div><label className="form-label">First Name *</label><input placeholder="John" className="form-input" value={form.firstName} onChange={set("firstName")} /></div>
                 <div><label className="form-label">Last Name *</label><input placeholder="Smith" className="form-input" value={form.lastName} onChange={set("lastName")} /></div>
               </div>

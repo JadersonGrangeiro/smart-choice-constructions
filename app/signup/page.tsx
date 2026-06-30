@@ -92,7 +92,7 @@ export default function SignupPage() {
           )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1.125rem" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div className="grid-2col">
               <div>
                 <label className="form-label">First Name *</label>
                 <input placeholder="John" value={form.firstName} onChange={set("firstName")} className={`form-input${errors.firstName ? " error" : ""}`} />

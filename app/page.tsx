@@ -522,7 +522,7 @@ export default function Home() {
                 Get discovered by local contractors. Start at just $14.90 your first month.
               </p>
             </div>
-            <div style={{ display: "flex", gap: "0.875rem", flexShrink: 0, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "0.875rem", flexWrap: "wrap", width: "100%" }}>
               <Link href="/join/supplier" style={{ background: "white", color: "var(--navy)", fontWeight: 700, padding: "0.75rem 1.5rem", borderRadius: "var(--radius)", textDecoration: "none", fontSize: "0.9375rem" }}>
                 List Your Business — $14.90 First Month →
               </Link>

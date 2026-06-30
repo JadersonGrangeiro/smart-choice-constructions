@@ -388,6 +388,84 @@ html, body { overflow-x: hidden; }
   }
 }
 
+/* ─── Responsive grid utilities ─── */
+
+/* Fixed sidebar (260px/240px etc.) + content — sidebar is .hide-mobile on mobile */
+/* Adding this class forces the grid to 1 column on mobile via !important */
+.grid-sidebar-outer {
+  display: grid;
+  gap: 2rem;
+}
+@media (max-width: 768px) {
+  .grid-sidebar-outer {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* 2-column content + sidebar (2fr 1fr, 1.1fr 1fr, etc.) — single col on mobile */
+/* Combine with inline gridTemplateColumns on desktop */
+.grid-2col-sidebar {
+  display: grid;
+  gap: 2.5rem;
+}
+.grid-2col-sidebar-lg { gap: 3rem; }
+@media (max-width: 768px) {
+  .grid-2col-sidebar,
+  .grid-2col-sidebar-lg {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+}
+
+/* 2-column form / card pair — single col on phones */
+.grid-2col {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 580px) {
+  .grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 3-column grid — single col on phones */
+.grid-3col {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 640px) {
+  .grid-3col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Blog featured post: image | content — stacks on mobile */
+.blog-feat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 680px) {
+  .blog-feat-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Messages layout: thread list + chat panel */
+.msg-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  overflow: hidden;
+}
+@media (max-width: 768px) {
+  .msg-layout {
+    grid-template-columns: 1fr;
+  }
+  .msg-thread-list-hide-mobile { display: none !important; }
+}
+
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar { width:5px; }
 ::-webkit-scrollbar-track { background:transparent; }

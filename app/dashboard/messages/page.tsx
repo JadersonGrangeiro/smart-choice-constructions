@@ -110,16 +110,31 @@ export default function MessagesPage() {
 
   return (
     <div style={{ paddingTop: "76px", height: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ background: "var(--navy)", color: "white", padding: "1.5rem 2rem" }}>
-        <h1 style={{ fontSize: "1.375rem", fontWeight: 800, marginBottom: "0.25rem" }}>Messages</h1>
-        <p style={{ fontSize: "0.875rem", opacity: 0.65 }}>
-          {threads.length} conversation{threads.length !== 1 ? "s" : ""}
-        </p>
+      <div style={{ background: "var(--navy)", color: "white", padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+        {selected && (
+          <button onClick={() => setSelected(null)} className="msg-back-btn"
+            style={{ background: "none", border: "none", color: "white", cursor: "pointer", padding: "0.25rem 0.5rem", fontSize: "1.25rem", lineHeight: 1, flexShrink: 0, display: "none" }}>
+            ←
+          </button>
+        )}
+        <div>
+          <h1 style={{ fontSize: "1.375rem", fontWeight: 800, marginBottom: "0.125rem" }}>Messages</h1>
+          <p style={{ fontSize: "0.875rem", opacity: 0.65 }}>
+            {threads.length} conversation{threads.length !== 1 ? "s" : ""}
+          </p>
+        </div>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .msg-back-btn { display: block !important; }
+          .msg-thread-panel { display: ${selected ? "none" : "block"} !important; }
+          .msg-chat-panel  { display: ${selected ? "flex"  : "none"} !important; }
+        }
+      `}</style>
 
-      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "320px 1fr", overflow: "hidden" }}>
+      <div className="msg-layout">
         {/* Thread list */}
-        <div style={{ borderRight: "1px solid var(--gray-150)", overflowY: "auto", background: "white" }}>
+        <div className="msg-thread-panel" style={{ borderRight: "1px solid var(--gray-150)", overflowY: "auto", background: "white" }}>
           {threads.length === 0 ? (
             <div style={{ padding: "3rem 1.5rem", textAlign: "center", color: "var(--gray-400)" }}>
               <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>💬</div>
@@ -166,12 +181,12 @@ export default function MessagesPage() {
 
         {/* Chat panel */}
         {!selected ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "1rem", color: "var(--gray-400)", background: "var(--gray-50)" }}>
+          <div className="msg-chat-panel" style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "1rem", color: "var(--gray-400)", background: "var(--gray-50)" }}>
             <div style={{ fontSize: "3rem" }}>💬</div>
             <p style={{ fontWeight: 600, color: "var(--gray-500)" }}>Select a conversation</p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", background: "var(--gray-50)" }}>
+          <div className="msg-chat-panel" style={{ display: "flex", flexDirection: "column", background: "var(--gray-50)" }}>
             {/* Chat header */}
             <div style={{ background: "white", padding: "1rem 1.5rem", borderBottom: "1px solid var(--gray-150)", display: "flex", alignItems: "center", gap: "1rem" }}>
               <div style={{ width: "40px", height: "40px", background: "var(--navy)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, flexShrink: 0 }}>

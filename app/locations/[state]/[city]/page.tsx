@@ -134,7 +134,7 @@ export default async function CityPage({ params }: { params: Promise<{ state: st
           <p style={{ color: "var(--gray-500)", marginBottom: "1.5rem", fontSize: "0.9375rem" }}>
             Select a service to find local specialists.
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1rem", marginBottom: "1rem" }}>
+          <div className="grid-3col" style={{ marginBottom: "1rem" }}>
             {topCats.map(cat => (
               <Link key={cat.id} href={`/locations/${state}/${city}/${cat.id}`}
                 className="city-svc-card"

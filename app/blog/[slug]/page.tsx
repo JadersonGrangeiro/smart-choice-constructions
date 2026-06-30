@@ -243,7 +243,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       )}
 
       <div className="container-narrow" style={{ padding: "3rem 1.5rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "3rem", alignItems: "start" }}>
+        <div className="grid-2col-sidebar grid-2col-sidebar-lg" style={{ gridTemplateColumns: "2fr 1fr", alignItems: "start" }}>
           {/* Article */}
           <article>
             <p style={{ fontSize: "1.125rem", color: "var(--gray-700)", lineHeight: 1.85, marginBottom: "2.5rem", fontWeight: 500, borderLeft: "4px solid var(--red)", paddingLeft: "1.25rem" }}>

@@ -69,7 +69,7 @@ export default function BlogPage() {
         {/* Featured */}
         {posts[0] && (
           <div className="card" style={{ overflow: "hidden", marginBottom: "2rem" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }} className="blog-feat-grid">
+            <div className="blog-feat-grid">
               <div style={{ minHeight: "240px", overflow: "hidden", position: "relative" }}>
                 <img
                   src={posts[0].image ?? "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80"}

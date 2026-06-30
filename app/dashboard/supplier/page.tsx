@@ -193,7 +193,7 @@ export default function SupplierDashboardPage() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem", alignItems: "start" }}>
+        <div className="grid-2col-sidebar" style={{ gridTemplateColumns: "2fr 1fr", alignItems: "start" }}>
           {/* Profile Info */}
           <div className="card" style={{ padding: "2rem" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.75rem" }}>

@@ -584,7 +584,7 @@ export default function ContractorDashboard() {
                 {profileMsg}
               </div>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+            <div className="grid-2col" style={{ gap: "1.25rem" }}>
               <div style={{ gridColumn: "1/-1" }}>
                 <label className="form-label">Business Description</label>
                 <textarea className="form-input" rows={4} style={{ resize: "vertical" }}
@@ -697,7 +697,7 @@ export default function ContractorDashboard() {
           ))}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+        <div className="grid-2col-sidebar" style={{ gridTemplateColumns: "1fr 1fr" }}>
           {/* Recent leads — clickable */}
           <div className="card" style={{ padding: "1.75rem" }}>
             <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "1.25rem" }}>

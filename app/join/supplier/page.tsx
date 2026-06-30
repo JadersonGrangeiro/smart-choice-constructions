@@ -121,7 +121,7 @@ export default function SupplierJoinPage() {
           )}
 
           <form onSubmit={handleSubmit} noValidate>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.25rem" }}>
+            <div className="grid-2col" style={{ gap: "1.25rem", marginBottom: "1.25rem" }}>
               {field("companyName", "Company Name *", "ABC Supply Co.")}
               {field("contactName", "Contact Name *", "Your full name")}
               {field("email", "Business Email *", "contact@yourbusiness.com", "email")}
@@ -145,7 +145,7 @@ export default function SupplierJoinPage() {
             </div>
 
             {/* Location */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.25rem" }}>
+            <div className="grid-2col" style={{ gap: "1.25rem", marginBottom: "1.25rem" }}>
               <div>
                 <label style={{ display: "block", fontWeight: 600, color: "var(--gray-700)", marginBottom: "0.375rem", fontSize: "0.9375rem" }}>State *</label>
                 <select
@@ -200,7 +200,7 @@ export default function SupplierJoinPage() {
         </div>
 
         {/* Why join */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginTop: "2rem" }}>
+        <div className="grid-3col" style={{ marginTop: "2rem" }}>
           {[
             { icon: "💰", title: "$14.90 First Month", desc: "Then $29.90/month, cancel anytime" },
             { icon: "🔍", title: "Get Discovered", desc: "Contractors actively searching" },
