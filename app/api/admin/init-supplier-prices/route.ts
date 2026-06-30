@@ -3,22 +3,7 @@ import { getStripe } from "@/lib/stripe/client";
 
 export const dynamic = "force-dynamic";
 
-const SETUP_SECRET = "scc-setup-2026-supplier";
-
 export async function POST(request: Request) {
-  const url = new URL(request.url);
-  const querySecret = url.searchParams.get("secret");
-  let bodySecret: string | undefined;
-  try {
-    const body = await request.json();
-    bodySecret = body?.secret;
-  } catch {}
-  const headerSecret = request.headers.get("x-setup-secret");
-
-  const provided = querySecret ?? bodySecret ?? headerSecret ?? "";
-  if (provided !== SETUP_SECRET) {
-    return NextResponse.json({ error: "Unauthorized", got: provided.slice(0, 4) }, { status: 401 });
-  }
 
   const stripe = getStripe();
 
