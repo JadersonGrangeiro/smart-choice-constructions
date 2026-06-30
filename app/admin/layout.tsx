@@ -19,6 +19,8 @@ const NAV_GROUPS = [
     label: "Content",
     items: [
       { href: "/admin/banners",         icon: "🖼️", label: "Banners" },
+      { href: "/admin/site-images",     icon: "🏠", label: "Site Images" },
+      { href: "/admin/site-content",    icon: "✏️", label: "Site Content" },
       { href: "/admin/testimonials",    icon: "💬", label: "Testimonials" },
       { href: "/admin/pages",           icon: "📄", label: "Pages" },
       { href: "/admin/content",         icon: "📝", label: "Blog & FAQ" },

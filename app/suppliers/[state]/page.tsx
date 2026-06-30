@@ -14,8 +14,9 @@ function getStateIntro(code: string, name: string): string {
     `${name} contractors and homeowners have access to a wide range of local building supply companies, equipment rental providers, and professional services through Smart Choice. Browse by category or city to find what you need.`;
 }
 import { US_STATES } from "@/lib/data";
-import { SUPPLIER_CATEGORIES, MOCK_SUPPLIERS, getSuppliersByState } from "@/lib/supplier-data";
+import { SUPPLIER_CATEGORIES } from "@/lib/supplier-data";
 import { getStateBySlug, cityToSlug } from "@/lib/locations";
+import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -41,7 +42,17 @@ export default async function SupplierStatePage({ params }: { params: Promise<{ 
   const { state } = await params;
   const st = getStateBySlug(state);
   if (!st) notFound();
-  const stateSuppliers = getSuppliersByState(st.code);
+
+  const supabase = createAdminClient();
+  const { data: stateSuppliers } = await supabase
+    .from("suppliers")
+    .select("id, company_name, category, city, state_code, logo_url, rating, review_count, is_featured")
+    .eq("state_code", st.code)
+    .eq("is_active", true)
+    .order("is_featured", { ascending: false })
+    .order("rating", { ascending: false })
+    .limit(20);
+
   const topCats = SUPPLIER_CATEGORIES.slice(0, 12);
   const bigCities = st.cities.slice(0, 8);
 
@@ -74,25 +85,25 @@ export default async function SupplierStatePage({ params }: { params: Promise<{ 
 
       <div className="container" style={{ padding: "3.5rem 1.5rem" }}>
         {/* Suppliers in this state */}
-        {stateSuppliers.length > 0 && (
+        {stateSuppliers && stateSuppliers.length > 0 && (
           <section style={{ marginBottom: "4rem" }}>
             <h2 style={{ fontSize: "1.375rem", fontWeight: 800, color: "var(--navy)", marginBottom: "1.5rem" }}>
               Suppliers in {st.name}
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {stateSuppliers.map(s => {
-                const cat = SUPPLIER_CATEGORIES.find(c => c.id === s.categoryId);
+                const cat = SUPPLIER_CATEGORIES.find(c => c.id === s.category);
                 return (
                   <div key={s.id} className="card" style={{ padding: "1.5rem", display: "flex", gap: "1.25rem", alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ width: "52px", height: "52px", background: `${cat?.color ?? "var(--navy)"}18`, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
-                      {cat?.icon ?? "🏢"}
+                      {s.logo_url ? <img src={s.logo_url} alt="" style={{ width: "40px", height: "40px", objectFit: "contain", borderRadius: "8px" }} /> : (cat?.icon ?? "🏢")}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{s.name}</div>
-                      <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)", marginBottom: "0.375rem" }}>{cat?.name} · {s.location}</div>
+                      <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{s.company_name}</div>
+                      <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)", marginBottom: "0.375rem" }}>{cat?.name ?? s.category} · {s.city}, {s.state_code}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                        <Stars rating={s.rating} />
-                        <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>({s.reviews})</span>
+                        <Stars rating={s.rating ?? 0} />
+                        <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>({s.review_count ?? 0})</span>
                       </div>
                     </div>
                     <Link href={`/suppliers/profile/${s.id}`} className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem", flexShrink: 0 }}>

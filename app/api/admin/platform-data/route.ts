@@ -15,6 +15,9 @@ const ALLOWED_KEYS = [
   "crm_contacts",
   "crm_interactions",
   "locations_config",
+  "pages_config",
+  "site_images",
+  "site_content",
 ];
 
 export async function GET(request: Request) {

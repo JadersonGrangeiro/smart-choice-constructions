@@ -74,11 +74,28 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
+const DOC_TYPES = [
+  { value: "license",           label: "Contractor License" },
+  { value: "insurance",         label: "Insurance Certificate" },
+  { value: "background_check",  label: "Background Check" },
+  { value: "certification",     label: "Trade Certification" },
+  { value: "other",             label: "Other Document" },
+];
+
+interface ContractorDoc {
+  id: string; doc_type: string; file_name: string;
+  status: string; notes?: string; created_at: string;
+}
+
 export default function ContractorDashboard() {
   const [data, setData]           = useState<DashboardData | null>(null);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
+  const [docs, setDocs]           = useState<ContractorDoc[]>([]);
+  const [docType, setDocType]     = useState("license");
+  const [uploading, setUploading] = useState(false);
+  const [docMsg, setDocMsg]       = useState("");
 
   useEffect(() => {
     fetch("/api/dashboard/contractor")
@@ -89,7 +106,33 @@ export default function ContractorDashboard() {
       })
       .catch(() => setError("Failed to load dashboard"))
       .finally(() => setLoading(false));
+    fetch("/api/dashboard/contractor/documents")
+      .then(r => r.ok ? r.json() : { documents: [] })
+      .then(d => setDocs(d.documents ?? []))
+      .catch(() => {});
   }, []);
+
+  async function uploadDoc(file: File) {
+    setUploading(true); setDocMsg("");
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("doc_type", docType);
+    const res = await fetch("/api/dashboard/contractor/documents", { method: "POST", body: fd });
+    const d = await res.json();
+    if (res.ok) {
+      setDocs(prev => [d.document, ...prev]);
+      setDocMsg("Document uploaded. Our team will review it within 1 business day.");
+    } else {
+      setDocMsg(d.error ?? "Upload failed.");
+    }
+    setUploading(false);
+  }
+
+  async function deleteDoc(id: string) {
+    if (!confirm("Remove this document?")) return;
+    await fetch(`/api/dashboard/contractor/documents?id=${id}`, { method: "DELETE" });
+    setDocs(prev => prev.filter(d => d.id !== id));
+  }
 
   const openBillingPortal = async () => {
     setPortalLoading(true);
@@ -245,6 +288,77 @@ export default function ContractorDashboard() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Documents */}
+        <div className="card" style={{ padding: "1.75rem", marginTop: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
+            <div>
+              <h2 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>Documents</h2>
+              <p style={{ fontSize: "0.8125rem", color: "var(--gray-500)", margin: 0 }}>
+                Upload your license, insurance, and certifications. Documents are reviewed and shown as verified badges on your profile.
+              </p>
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+              <select
+                value={docType}
+                onChange={e => setDocType(e.target.value)}
+                style={{ padding: "0.5rem 0.75rem", border: "1.5px solid var(--gray-200)", borderRadius: "var(--radius-sm)", fontFamily: "inherit", fontSize: "0.875rem", color: "var(--gray-700)" }}>
+                {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+              <label style={{
+                background: uploading ? "var(--gray-300)" : "var(--navy)", color: "white",
+                border: "none", borderRadius: "var(--radius-sm)", padding: "0.5rem 1.125rem",
+                fontWeight: 600, fontSize: "0.875rem", cursor: uploading ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+              }}>
+                {uploading ? "Uploading…" : "Upload File"}
+                <input type="file" style={{ display: "none" }}
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  disabled={uploading}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc(f); e.target.value = ""; }}
+                />
+              </label>
+            </label>
+          </div>
+
+          {docMsg && (
+            <div style={{ padding: "0.75rem 1rem", marginBottom: "1rem", borderRadius: "var(--radius-sm)", fontSize: "0.875rem",
+              background: docMsg.includes("failed") || docMsg.includes("error") ? "rgba(199,25,26,0.08)" : "rgba(22,163,74,0.08)",
+              color: docMsg.includes("failed") || docMsg.includes("error") ? "var(--red)" : "#16a34a",
+              border: `1px solid ${docMsg.includes("failed") || docMsg.includes("error") ? "rgba(199,25,26,0.2)" : "rgba(22,163,74,0.2)"}`,
+            }}>{docMsg}</div>
+          )}
+
+          {docs.length === 0 ? (
+            <p style={{ color: "var(--gray-400)", fontSize: "0.875rem", textAlign: "center", padding: "2rem 0" }}>
+              No documents uploaded yet. Upload your license and insurance to earn verified badges.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+              {docs.map(doc => {
+                const label = DOC_TYPES.find(t => t.value === doc.doc_type)?.label ?? doc.doc_type;
+                const statusColor: Record<string, string> = { pending: "#d97706", approved: "#16a34a", rejected: "var(--red)" };
+                return (
+                  <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "0.75rem 1rem", background: "var(--gray-50)", border: "1px solid var(--gray-150)", borderRadius: "var(--radius-sm)", flexWrap: "wrap" }}>
+                    <div style={{ fontSize: "1.25rem" }}>
+                      {doc.doc_type === "license" ? "📜" : doc.doc_type === "insurance" ? "🛡️" : doc.doc_type === "background_check" ? "🔍" : "📄"}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--navy)" }}>{label}</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--gray-400)" }}>{doc.file_name} · {new Date(doc.created_at).toLocaleDateString()}</div>
+                    </div>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: statusColor[doc.status] ?? "var(--gray-500)", textTransform: "capitalize", background: "white", border: `1px solid currentColor`, padding: "0.2rem 0.625rem", borderRadius: "999px" }}>
+                      {doc.status}
+                    </span>
+                    {doc.notes && <div style={{ fontSize: "0.75rem", color: "var(--gray-500)", width: "100%", paddingLeft: "2.25rem" }}>{doc.notes}</div>}
+                    <button onClick={() => deleteDoc(doc.id)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--gray-400)", fontSize: "1.125rem", padding: "0 0.25rem", lineHeight: 1 }}>×</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Subscription block */}

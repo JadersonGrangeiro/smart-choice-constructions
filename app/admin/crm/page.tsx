@@ -1,58 +1,84 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 
-type CRMType     = "contractor" | "supplier" | "homeowner" | "partner";
-type CRMPriority = "low" | "medium" | "high" | "urgent";
-type InteractionType = "call" | "email" | "message" | "meeting" | "note";
-type TaskStatus  = "todo" | "in_progress" | "follow_up" | "done";
+/* ─── Types ─────────────────────────────────────────────────────────────── */
+type CRMType      = "contractor" | "supplier" | "homeowner" | "partner";
+type CRMStage     = "lead" | "contacted" | "proposal" | "negotiating" | "won" | "lost";
+type CRMPriority  = "low" | "medium" | "high" | "urgent";
+type InteractionType = "call" | "email_out" | "email_in" | "message" | "meeting" | "note";
+type TaskStatus   = "todo" | "in_progress" | "follow_up" | "done";
 
 interface CRMContact {
-  id: string; name: string; type: CRMType; company?: string;
-  email?: string; phone?: string; state?: string;
+  id: string; name: string; type: CRMType; stage: CRMStage;
+  company?: string; email?: string; phone?: string; state?: string;
   priority: CRMPriority; notes?: string; nextContactDate?: string;
-  tags?: string[]; createdAt: string; updatedAt: string;
+  tags?: string[]; dealValue?: number; createdAt: string; updatedAt: string;
 }
 interface CRMInteraction {
   id: string; contactId: string;
   type: InteractionType; subject: string; body: string; date: string;
+  fromEmail?: string;
 }
 interface CRMTask {
-  id: string; contactId?: string;
-  title: string; status: TaskStatus;
-  dueDate?: string; notes?: string; createdAt: string;
+  id: string; contactId?: string; title: string;
+  status: TaskStatus; dueDate?: string; notes?: string; createdAt: string;
+}
+interface ComposeEmail {
+  to: string; toName: string; contactId: string;
+  subject: string; body: string; isReply?: boolean; replyToId?: string;
 }
 
-const PRIORITY_STYLE: Record<CRMPriority, { bg:string; color:string; label:string }> = {
-  low:    { bg:"var(--gray-100)",            color:"var(--gray-500)", label:"Low" },
-  medium: { bg:"rgba(245,158,11,0.1)",       color:"#d97706",         label:"Medium" },
-  high:   { bg:"rgba(99,102,241,0.1)",       color:"#6366f1",         label:"High" },
-  urgent: { bg:"rgba(199,25,26,0.1)",        color:"var(--red)",      label:"Urgent" },
+/* ─── Constants ─────────────────────────────────────────────────────────── */
+const STAGE_MAP: Record<CRMStage, { label: string; color: string; bg: string }> = {
+  lead:        { label:"Lead",        color:"var(--gray-500)",  bg:"var(--gray-100)" },
+  contacted:   { label:"Contacted",   color:"#6366f1",          bg:"rgba(99,102,241,0.1)" },
+  proposal:    { label:"Proposal",    color:"#d97706",          bg:"rgba(245,158,11,0.1)" },
+  negotiating: { label:"Negotiating", color:"#0891b2",          bg:"rgba(8,145,178,0.1)" },
+  won:         { label:"Won ✓",       color:"#16a34a",          bg:"rgba(22,163,74,0.1)" },
+  lost:        { label:"Lost",        color:"var(--red)",       bg:"rgba(199,25,26,0.1)" },
 };
-const TASK_STATUS_STYLE: Record<TaskStatus, { bg:string; color:string; label:string }> = {
-  todo:        { bg:"var(--gray-100)",          color:"var(--gray-500)", label:"To Do" },
-  in_progress: { bg:"rgba(99,102,241,0.1)",     color:"#6366f1",         label:"In Progress" },
-  follow_up:   { bg:"rgba(245,158,11,0.1)",     color:"#d97706",         label:"Follow Up" },
-  done:        { bg:"rgba(22,163,74,0.1)",      color:"#16a34a",         label:"Done" },
+const STAGES: CRMStage[] = ["lead","contacted","proposal","negotiating","won","lost"];
+const PRIORITY_MAP: Record<CRMPriority,{color:string;bg:string;label:string}> = {
+  low:    { color:"var(--gray-500)", bg:"var(--gray-100)",        label:"Low" },
+  medium: { color:"#d97706",         bg:"rgba(245,158,11,0.1)",   label:"Medium" },
+  high:   { color:"#6366f1",         bg:"rgba(99,102,241,0.1)",   label:"High" },
+  urgent: { color:"var(--red)",      bg:"rgba(199,25,26,0.1)",    label:"🚨 Urgent" },
 };
-const TYPE_ICONS: Record<CRMType, string>          = { contractor:"🔨", supplier:"🏪", homeowner:"🏠", partner:"🤝" };
-const INT_ICONS:  Record<InteractionType, string>  = { call:"📞", email:"📧", message:"💬", meeting:"🤝", note:"📝" };
+const TYPE_ICONS: Record<CRMType,string>         = { contractor:"🔨", supplier:"🏪", homeowner:"🏠", partner:"🤝" };
+const INT_ICONS: Record<InteractionType,string>  = { call:"📞", email_out:"📤", email_in:"📥", message:"💬", meeting:"🤝", note:"📝" };
+const INT_LABELS: Record<InteractionType,string> = { call:"Call", email_out:"Email Sent", email_in:"Email Received", message:"Message", meeting:"Meeting", note:"Note" };
+const TASK_MAP: Record<TaskStatus,{color:string;bg:string;label:string}> = {
+  todo:        { color:"var(--gray-500)", bg:"var(--gray-100)",        label:"To Do" },
+  in_progress: { color:"#6366f1",         bg:"rgba(99,102,241,0.1)",   label:"In Progress" },
+  follow_up:   { color:"#d97706",         bg:"rgba(245,158,11,0.1)",   label:"Follow Up" },
+  done:        { color:"#16a34a",         bg:"rgba(22,163,74,0.1)",    label:"Done ✓" },
+};
 
-function Toast({ msg }: { msg: string }) {
+const EMAIL_TEMPLATES = [
+  { label:"Introduction",       subject:"Introduction — Smart Choice Constructions", body:"Hi {name},\n\nI'm reaching out from Smart Choice Constructions. We help connect homeowners with verified local contractors across the US.\n\nI'd love to learn more about your business and see how we can help you grow.\n\nBest regards,\nSmart Choice Team" },
+  { label:"Follow Up",          subject:"Following up — Smart Choice Constructions", body:"Hi {name},\n\nJust following up on my previous message. I wanted to make sure you had a chance to review our platform.\n\nWould you have 15 minutes this week for a quick call?\n\nBest regards,\nSmart Choice Team" },
+  { label:"Proposal",           subject:"Proposal — Join Smart Choice Constructions", body:"Hi {name},\n\nThank you for your interest in Smart Choice Constructions. I've put together a proposal tailored to your business needs.\n\nFirst month: $29.90 | Then $49.90/mo\n\nThis includes: verified profile listing, lead matching, review management, and priority placement in your area.\n\nReady to get started? Reply to this email or call us directly.\n\nBest regards,\nSmart Choice Team" },
+  { label:"Welcome / Onboarding",subject:"Welcome to Smart Choice Constructions!", body:"Hi {name},\n\nWelcome to Smart Choice Constructions! We're excited to have you on board.\n\nHere are your next steps:\n1. Complete your profile at smartchoiceconstructions.com\n2. Upload your license and insurance documents\n3. Add photos of your past work\n\nOur team is here to help. Feel free to reply to this email with any questions.\n\nWelcome aboard!\nSmart Choice Team" },
+  { label:"Re-engagement",      subject:"We miss you — Smart Choice Constructions", body:"Hi {name},\n\nWe noticed you haven't been active recently. We've made several improvements to our platform that could benefit your business.\n\nWould you like to reconnect and see what's new?\n\nBest regards,\nSmart Choice Team" },
+];
+
+/* ─── UI Components ─────────────────────────────────────────────────────── */
+function Toast({ msg, ok = true }: { msg: string; ok?: boolean }) {
   return (
-    <div style={{ position:"fixed", bottom:"1.5rem", right:"1.5rem", zIndex:9999, background:"var(--navy)", color:"white", padding:"0.875rem 1.5rem", borderRadius:"var(--radius)", fontWeight:600, fontSize:"0.9rem", boxShadow:"var(--shadow-lg)" }}>
+    <div style={{ position:"fixed", bottom:"1.5rem", right:"1.5rem", zIndex:9999, background: ok?"#16a34a":"var(--red)", color:"white", padding:"0.875rem 1.5rem", borderRadius:"var(--radius)", fontWeight:600, fontSize:"0.9rem", boxShadow:"var(--shadow-lg)" }}>
       {msg}
     </div>
   );
 }
 
-function Modal({ title, onClose, children }: { title:string; onClose:()=>void; children:React.ReactNode }) {
+function Modal({ title, onClose, width = 640, children }: { title:string; onClose:()=>void; width?:number; children:React.ReactNode }) {
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:"1.5rem", overflowY:"auto" }}
-      onClick={e => { if (e.target===e.currentTarget) onClose(); }}>
-      <div style={{ background:"white", borderRadius:"var(--radius-xl)", padding:"2rem", width:"100%", maxWidth:"640px", boxShadow:"var(--shadow-xl)", maxHeight:"90vh", overflowY:"auto" }}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:"1.5rem", overflowY:"auto" }}
+      onClick={e=>{ if (e.target===e.currentTarget) onClose(); }}>
+      <div style={{ background:"white", borderRadius:"var(--radius-xl)", padding:"2rem", width:"100%", maxWidth:`${width}px`, boxShadow:"var(--shadow-xl)", maxHeight:"92vh", overflowY:"auto" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.5rem" }}>
-          <h2 style={{ fontWeight:800, color:"var(--navy)", fontSize:"1.1875rem" }}>{title}</h2>
-          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:"1.375rem", cursor:"pointer", color:"var(--gray-400)", lineHeight:1 }}>×</button>
+          <h2 style={{ fontWeight:800, color:"var(--navy)", fontSize:"1.125rem" }}>{title}</h2>
+          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:"1.5rem", cursor:"pointer", color:"var(--gray-400)", lineHeight:1, padding:"0.25rem" }}>×</button>
         </div>
         {children}
       </div>
@@ -60,469 +86,656 @@ function Modal({ title, onClose, children }: { title:string; onClose:()=>void; c
   );
 }
 
-const F = ({ label, children, span }: { label:string; children:React.ReactNode; span?:boolean }) => (
-  <div style={{ gridColumn: span ? "1/-1" : undefined }}>
-    <label style={{ display:"block", fontWeight:700, color:"var(--gray-700)", fontSize:"0.8125rem", marginBottom:"0.375rem" }}>{label}</label>
-    {children}
-  </div>
-);
+function Field({ label, span, children }: { label:string; span?:boolean; children:React.ReactNode }) {
+  return (
+    <div style={{ gridColumn: span?"1/-1":undefined }}>
+      <label style={{ display:"block", fontWeight:700, color:"var(--gray-700)", fontSize:"0.8125rem", marginBottom:"0.375rem" }}>{label}</label>
+      {children}
+    </div>
+  );
+}
 
+function Pill({ text, color, bg }: { text:string; color:string; bg:string }) {
+  return <span style={{ background:bg, color, padding:"0.2rem 0.625rem", borderRadius:"999px", fontSize:"0.75rem", fontWeight:700, whiteSpace:"nowrap" }}>{text}</span>;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN PAGE
+═══════════════════════════════════════════════════════════════════════════ */
 export default function CRMPage() {
-  const [view, setView] = useState<"contacts"|"tasks">("contacts");
-  const [contacts, setContacts]         = useState<CRMContact[]>([]);
+  const [view,     setView]     = useState<"contacts"|"pipeline"|"tasks"|"inbox">("contacts");
+  const [contacts, setContacts] = useState<CRMContact[]>([]);
   const [interactions, setInteractions] = useState<CRMInteraction[]>([]);
-  const [tasks, setTasks]               = useState<CRMTask[]>([]);
-  const [loading, setLoading]           = useState(true);
+  const [tasks, setTasks]       = useState<CRMTask[]>([]);
+  const [loading, setLoading]   = useState(true);
 
-  const [selectedContact, setSelectedContact]   = useState<CRMContact|null>(null);
-  const [showContactForm, setShowContactForm]   = useState(false);
-  const [editingContact, setEditingContact]     = useState<CRMContact|null>(null);
-  const [contactForm, setContactForm]           = useState<Partial<CRMContact>>({ type:"contractor", priority:"medium" });
+  // UI state
+  const [selected,  setSelected]  = useState<CRMContact|null>(null);
+  const [showCForm, setShowCForm] = useState(false);
+  const [editC,     setEditC]     = useState<CRMContact|null>(null);
+  const [cForm,     setCForm]     = useState<Partial<CRMContact>>({ type:"contractor", priority:"medium", stage:"lead" });
 
-  const [showInteractionForm, setShowInteractionForm] = useState(false);
-  const [intForm, setIntForm]   = useState<Partial<CRMInteraction>>({ type:"note" });
+  const [showIntForm, setShowIntForm] = useState(false);
+  const [intForm,     setIntForm]     = useState<Partial<CRMInteraction>>({ type:"note" });
 
   const [showTaskForm, setShowTaskForm] = useState(false);
-  const [taskForm, setTaskForm]         = useState<Partial<CRMTask>>({ status:"todo" });
+  const [taskForm,     setTaskForm]     = useState<Partial<CRMTask>>({ status:"todo" });
 
-  const [search, setSearch]         = useState("");
+  const [compose,    setCompose]    = useState<ComposeEmail|null>(null);
+  const [composeBody, setComposeBody] = useState("");
+  const [composeSub,  setComposeSub]  = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  const [search,     setSearch]     = useState("");
   const [typeFilter, setTypeFilter] = useState<CRMType|"all">("all");
-  const [toast, setToast]           = useState<string|null>(null);
+  const [stageFilter,setStageFilter]= useState<CRMStage|"all">("all");
+  const [toast,      setToast]      = useState<{msg:string;ok?:boolean}|null>(null);
 
-  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000); };
+  const showToast = (msg:string, ok=true) => { setToast({msg,ok}); setTimeout(()=>setToast(null),3000); };
 
+  /* Persistence */
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [r1, r2] = await Promise.all([
-        fetch("/api/admin/platform-data?key=crm_contacts").then(r => r.json()),
-        fetch("/api/admin/platform-data?key=crm_interactions").then(r => r.json()),
+      const [r1,r2] = await Promise.all([
+        fetch("/api/admin/platform-data?key=crm_contacts").then(r=>r.json()),
+        fetch("/api/admin/platform-data?key=crm_interactions").then(r=>r.json()),
       ]);
       setContacts(r1.value ?? []);
-      const allData = r2.value ?? {};
-      setInteractions(allData.interactions ?? []);
-      setTasks(allData.tasks ?? []);
+      const d = r2.value ?? {};
+      setInteractions(d.interactions ?? []);
+      setTasks(d.tasks ?? []);
     } finally { setLoading(false); }
   }, []);
+  useEffect(()=>{ load(); },[load]);
 
-  useEffect(() => { load(); }, [load]);
-
-  const persistContacts = async (updated: CRMContact[]) =>
-    fetch("/api/admin/platform-data", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ key:"crm_contacts", value:updated }) });
-
-  const persistInteractionsAndTasks = async (ints: CRMInteraction[], tks: CRMTask[]) =>
-    fetch("/api/admin/platform-data", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ key:"crm_interactions", value:{ interactions:ints, tasks:tks } }) });
-
-  const saveContact = async () => {
-    if (!contactForm.name) { showToast("Name required"); return; }
-    const now = new Date().toISOString();
-    const entry: CRMContact = {
-      id: editingContact?.id ?? `c-${Date.now()}`,
-      name: contactForm.name!, type: contactForm.type ?? "contractor",
-      company: contactForm.company, email: contactForm.email, phone: contactForm.phone,
-      state: contactForm.state, priority: contactForm.priority ?? "medium",
-      notes: contactForm.notes, nextContactDate: contactForm.nextContactDate,
-      tags: contactForm.tags, createdAt: editingContact?.createdAt ?? now, updatedAt: now,
-    };
-    const updated = editingContact ? contacts.map(c => c.id===editingContact.id ? entry : c) : [...contacts, entry];
-    await persistContacts(updated);
-    setContacts(updated);
-    showToast(editingContact ? "Contact updated!" : "Contact created!");
-    setShowContactForm(false); setEditingContact(null); setContactForm({ type:"contractor", priority:"medium" });
-    if (selectedContact?.id === entry.id) setSelectedContact(entry);
+  const saveContacts = async (c: CRMContact[]) => {
+    await fetch("/api/admin/platform-data",{ method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({key:"crm_contacts",value:c}) });
+    setContacts(c);
+  };
+  const saveInts = async (ints: CRMInteraction[], tks: CRMTask[]) => {
+    await fetch("/api/admin/platform-data",{ method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({key:"crm_interactions",value:{interactions:ints,tasks:tks}}) });
+    setInteractions(ints); setTasks(tks);
   };
 
-  const deleteContact = async (id: string) => {
-    if (!confirm("Delete this contact and all their interactions?")) return;
-    const updated = contacts.filter(c => c.id !== id);
-    await persistContacts(updated);
-    setContacts(updated);
-    if (selectedContact?.id === id) setSelectedContact(null);
+  /* Contact CRUD */
+  const openNewContact = () => { setEditC(null); setCForm({type:"contractor",priority:"medium",stage:"lead"}); setShowCForm(true); };
+  const openEditContact= (c:CRMContact) => { setEditC(c); setCForm({...c}); setShowCForm(true); };
+
+  const saveContact = async () => {
+    if (!cForm.name) { showToast("Name is required","false" as unknown as boolean); return; }
+    const now = new Date().toISOString();
+    const entry: CRMContact = {
+      id: editC?.id ?? `c-${Date.now()}`,
+      name: cForm.name!, type: cForm.type??"contractor", stage: cForm.stage??"lead",
+      company: cForm.company, email: cForm.email, phone: cForm.phone,
+      state: cForm.state, priority: cForm.priority??"medium",
+      notes: cForm.notes, nextContactDate: cForm.nextContactDate,
+      tags: cForm.tags, dealValue: cForm.dealValue ? +cForm.dealValue : undefined,
+      createdAt: editC?.createdAt??now, updatedAt: now,
+    };
+    const updated = editC ? contacts.map(c=>c.id===editC.id?entry:c) : [...contacts, entry];
+    await saveContacts(updated);
+    showToast(editC ? "Contact updated ✓" : "Contact created ✓");
+    setShowCForm(false); setEditC(null);
+    if (selected?.id===entry.id) setSelected(entry);
+  };
+
+  const deleteContact = async (id:string) => {
+    if (!confirm("Delete this contact and all their history?")) return;
+    await saveContacts(contacts.filter(c=>c.id!==id));
+    if (selected?.id===id) setSelected(null);
     showToast("Contact deleted");
   };
 
-  const saveInteraction = async () => {
-    if (!intForm.subject || !selectedContact) return;
-    const entry: CRMInteraction = {
-      id: `i-${Date.now()}`, contactId: selectedContact.id,
-      type: intForm.type ?? "note", subject: intForm.subject!, body: intForm.body ?? "",
-      date: new Date().toLocaleString("en-US", { month:"short", day:"numeric", year:"numeric", hour:"2-digit", minute:"2-digit" }),
-    };
-    const updated = [entry, ...interactions];
-    await persistInteractionsAndTasks(updated, tasks);
-    setInteractions(updated);
-    showToast("Interaction saved!");
-    setShowInteractionForm(false); setIntForm({ type:"note" });
+  const moveStage = async (contactId:string, stage:CRMStage) => {
+    const now = new Date().toISOString();
+    const updated = contacts.map(c=>c.id===contactId?{...c,stage,updatedAt:now}:c);
+    await saveContacts(updated);
+    if (selected?.id===contactId) setSelected(updated.find(c=>c.id===contactId)??null);
   };
 
+  /* Interaction */
+  const saveInteraction = async () => {
+    if (!intForm.subject||!selected) return;
+    const entry: CRMInteraction = {
+      id:`i-${Date.now()}`, contactId:selected.id,
+      type: intForm.type??"note", subject:intForm.subject!, body:intForm.body??"",
+      date: new Date().toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+    };
+    const updated = [entry,...interactions];
+    await saveInts(updated, tasks);
+    showToast("Interaction saved ✓");
+    setShowIntForm(false); setIntForm({type:"note"});
+  };
+
+  /* Email compose */
+  const openCompose = (contact: CRMContact, isReply=false, replyInt?: CRMInteraction) => {
+    setCompose({ to: contact.email??"", toName: contact.name, contactId: contact.id, subject: isReply&&replyInt?`Re: ${replyInt.subject}`:"", body:"", isReply, replyToId: replyInt?.id });
+    setComposeSub(isReply&&replyInt?`Re: ${replyInt.subject}`:"");
+    setComposeBody("");
+  };
+
+  const applyTemplate = (tpl: typeof EMAIL_TEMPLATES[0]) => {
+    const name = compose?.toName.split(" ")[0] ?? "";
+    setComposeSub(tpl.subject);
+    setComposeBody(tpl.body.replace("{name}", name));
+  };
+
+  const sendEmail = async () => {
+    if (!compose||!composeSub||!composeBody) return;
+    setSendingEmail(true);
+    // Log interaction
+    const entry: CRMInteraction = {
+      id:`i-${Date.now()}`, contactId: compose.contactId,
+      type:"email_out", subject: composeSub, body: composeBody,
+      date: new Date().toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+    };
+    const updated = [entry,...interactions];
+    await saveInts(updated, tasks);
+    // Open mailto link
+    const mailtoLink = `mailto:${compose.to}?subject=${encodeURIComponent(composeSub)}&body=${encodeURIComponent(composeBody)}`;
+    window.open(mailtoLink, "_blank");
+    showToast("Email logged and mail client opened ✓");
+    setCompose(null); setComposeSub(""); setComposeBody("");
+    setSendingEmail(false);
+  };
+
+  const logInboundEmail = async (contact: CRMContact) => {
+    const subject = prompt("Subject of received email:");
+    if (!subject) return;
+    const body = prompt("Paste email body (optional):");
+    const entry: CRMInteraction = {
+      id:`i-${Date.now()}`, contactId: contact.id,
+      type:"email_in", subject, body: body??"",
+      fromEmail: contact.email,
+      date: new Date().toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+    };
+    const updated = [entry,...interactions];
+    await saveInts(updated, tasks);
+    showToast("Incoming email logged ✓");
+  };
+
+  /* Task */
   const saveTask = async () => {
-    if (!taskForm.title) { showToast("Task title required"); return; }
+    if (!taskForm.title) return;
     const entry: CRMTask = {
-      id: `t-${Date.now()}`, contactId: selectedContact?.id,
-      title: taskForm.title!, status: taskForm.status ?? "todo",
-      dueDate: taskForm.dueDate, notes: taskForm.notes,
-      createdAt: new Date().toISOString(),
+      id:`t-${Date.now()}`, contactId: selected?.id,
+      title:taskForm.title!, status:taskForm.status??"todo",
+      dueDate:taskForm.dueDate, notes:taskForm.notes, createdAt:new Date().toISOString(),
     };
     const updated = [...tasks, entry];
-    await persistInteractionsAndTasks(interactions, updated);
-    setTasks(updated);
-    showToast("Task created!");
-    setShowTaskForm(false); setTaskForm({ status:"todo" });
+    await saveInts(interactions, updated);
+    showToast("Task created ✓");
+    setShowTaskForm(false); setTaskForm({status:"todo"});
   };
 
-  const cycleTaskStatus = async (task: CRMTask) => {
-    const cycle: TaskStatus[] = ["todo","in_progress","follow_up","done"];
-    const next = cycle[(cycle.indexOf(task.status)+1) % cycle.length];
-    const updated = tasks.map(t => t.id===task.id ? { ...t, status:next } : t);
-    await persistInteractionsAndTasks(interactions, updated);
-    setTasks(updated);
+  const cycleTask = async (t:CRMTask) => {
+    const cycle:TaskStatus[] = ["todo","in_progress","follow_up","done"];
+    const next = cycle[(cycle.indexOf(t.status)+1)%cycle.length];
+    const updated = tasks.map(x=>x.id===t.id?{...x,status:next}:x);
+    await saveInts(interactions, updated);
   };
 
-  const deleteTask = async (id: string) => {
-    const updated = tasks.filter(t => t.id!==id);
-    await persistInteractionsAndTasks(interactions, updated);
-    setTasks(updated);
+  const deleteTask = async (id:string) => {
+    await saveInts(interactions, tasks.filter(t=>t.id!==id));
   };
 
-  const filteredContacts = contacts.filter(c => {
-    if (typeFilter !== "all" && c.type !== typeFilter) return false;
-    if (search && !c.name.toLowerCase().includes(search.toLowerCase()) &&
-        !c.email?.toLowerCase().includes(search.toLowerCase()) &&
-        !c.company?.toLowerCase().includes(search.toLowerCase()) &&
-        !c.phone?.includes(search)) return false;
+  /* Derived */
+  const filtered = contacts.filter(c=>{
+    if (typeFilter!=="all"&&c.type!==typeFilter) return false;
+    if (stageFilter!=="all"&&c.stage!==stageFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!c.name.toLowerCase().includes(q)&&!c.email?.toLowerCase().includes(q)&&!c.company?.toLowerCase().includes(q)&&!c.phone?.includes(q)) return false;
+    }
     return true;
   });
 
-  const contactInteractions = selectedContact ? interactions.filter(i => i.contactId===selectedContact.id) : [];
-  const pendingTasks = tasks.filter(t => t.status !== "done");
-  const urgentCount  = contacts.filter(c => c.priority === "urgent").length;
+  const contactInts  = selected ? interactions.filter(i=>i.contactId===selected.id) : [];
+  const contactTasks = selected ? tasks.filter(t=>t.contactId===selected.id) : [];
+  const allEmails    = interactions.filter(i=>i.type==="email_in"||i.type==="email_out");
+  const openTasks    = tasks.filter(t=>t.status!=="done");
+  const urgentCount  = contacts.filter(c=>c.priority==="urgent").length;
+  const pipelineVal  = contacts.filter(c=>!["won","lost"].includes(c.stage)).reduce((s,c)=>s+(c.dealValue??0),0);
+
+  if (loading) return (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"300px", flexDirection:"column", gap:"1rem", color:"var(--gray-400)" }}>
+      <div style={{ width:"32px", height:"32px", border:"3px solid var(--gray-200)", borderTopColor:"var(--navy)", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      Loading CRM…
+    </div>
+  );
 
   return (
     <div>
-      {toast && <Toast msg={toast} />}
+      {toast && <Toast msg={toast.msg} ok={toast.ok} />}
 
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.75rem", flexWrap:"wrap", gap:"1rem" }}>
-        <div>
-          <h1 style={{ fontSize:"1.625rem", fontWeight:800, color:"var(--navy)", marginBottom:"0.25rem" }}>CRM</h1>
-          <p style={{ color:"var(--gray-500)", fontSize:"0.875rem" }}>
-            {loading ? "Loading…" : `${contacts.length} contacts · ${pendingTasks.length} pending tasks${urgentCount > 0 ? ` · ${urgentCount} urgent` : ""}`}
-          </p>
-        </div>
-        <div style={{ display:"flex", gap:"0.75rem" }}>
-          <button onClick={() => setView("tasks")} className="btn-secondary" style={{ padding:"0.75rem 1.25rem", fontSize:"0.875rem", fontFamily:"inherit" }}>
-            ✅ Tasks ({pendingTasks.length})
-          </button>
-          <button onClick={() => { setContactForm({ type:"contractor", priority:"medium" }); setEditingContact(null); setShowContactForm(true); }} className="btn-red" style={{ padding:"0.75rem 1.5rem" }}>
-            + New Contact
-          </button>
-        </div>
-      </div>
-
-      {/* KPI strip */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"1rem", marginBottom:"1.75rem" }}>
-        {[
-          { label:"Total Contacts",  value: contacts.length,                              icon:"👥" },
-          { label:"Urgent",          value: urgentCount,                                  icon:"🔴" },
-          { label:"Tasks Pending",   value: pendingTasks.length,                          icon:"✅" },
-          { label:"Interactions",    value: interactions.length,                          icon:"💬" },
-        ].map(m => (
-          <div key={m.label} className="card" style={{ padding:"1.25rem", display:"flex", alignItems:"center", gap:"1rem" }}>
-            <span style={{ fontSize:"1.75rem" }}>{m.icon}</span>
-            <div>
-              <div style={{ fontSize:"1.5rem", fontWeight:800, color:"var(--navy)" }}>{m.value}</div>
-              <div style={{ fontSize:"0.8125rem", color:"var(--gray-500)" }}>{m.label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* View toggle */}
-      <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.25rem", flexWrap:"wrap" }}>
-        {[
-          { id:"contacts", label:`👥 Contacts (${contacts.length})` },
-          { id:"tasks",    label:`✅ Tasks (${pendingTasks.length} pending)` },
-        ].map(v => (
-          <button key={v.id} onClick={() => { setView(v.id as "contacts"|"tasks"); setSelectedContact(null); }} style={{
-            padding:"0.5rem 1rem", borderRadius:"999px", fontWeight:600, fontSize:"0.8125rem", cursor:"pointer", fontFamily:"inherit",
-            background: view===v.id && !selectedContact ? "var(--navy)" : "white",
-            color:      view===v.id && !selectedContact ? "white" : "var(--gray-600)",
-            border:`1.5px solid ${view===v.id && !selectedContact ? "var(--navy)" : "var(--gray-200)"}`,
-          }}>{v.label}</button>
-        ))}
-        {selectedContact && (
-          <button onClick={() => setSelectedContact(null)} style={{ padding:"0.5rem 1rem", borderRadius:"999px", fontWeight:600, fontSize:"0.8125rem", cursor:"pointer", fontFamily:"inherit", background:"white", color:"var(--gray-600)", border:"1.5px solid var(--gray-200)", marginLeft:"auto" }}>
-            ← Back to Contacts
-          </button>
-        )}
-      </div>
-
-      {/* ── Contact detail ── */}
-      {selectedContact && (
-        <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", gap:"1.5rem" }}>
-          {/* Left: contact card */}
-          <div>
-            <div className="card" style={{ padding:"1.5rem", marginBottom:"1rem" }}>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:"1rem", marginBottom:"1.25rem" }}>
-                <div style={{ width:"52px", height:"52px", borderRadius:"50%", background:"var(--navy)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.5rem", flexShrink:0 }}>
-                  {TYPE_ICONS[selectedContact.type]}
-                </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:800, color:"var(--navy)", fontSize:"1.0625rem" }}>{selectedContact.name}</div>
-                  {selectedContact.company && <div style={{ fontSize:"0.875rem", color:"var(--gray-500)" }}>{selectedContact.company}</div>}
-                  <span style={{ background:PRIORITY_STYLE[selectedContact.priority].bg, color:PRIORITY_STYLE[selectedContact.priority].color, padding:"2px 8px", borderRadius:"999px", fontSize:"0.7rem", fontWeight:700, display:"inline-block", marginTop:"4px" }}>
-                    {PRIORITY_STYLE[selectedContact.priority].label}
-                  </span>
-                </div>
-              </div>
-
-              {/* Quick action buttons */}
-              <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1rem" }}>
-                {selectedContact.phone && (
-                  <a href={`tel:${selectedContact.phone.replace(/\D/g,"")}`} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:"0.375rem", padding:"0.625rem", background:"rgba(22,163,74,0.1)", color:"#16a34a", borderRadius:"var(--radius)", fontWeight:700, fontSize:"0.8125rem", textDecoration:"none", border:"1px solid rgba(22,163,74,0.2)" }}>
-                    📞 Call
-                  </a>
-                )}
-                {selectedContact.email && (
-                  <a href={`mailto:${selectedContact.email}`} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:"0.375rem", padding:"0.625rem", background:"rgba(99,102,241,0.08)", color:"#6366f1", borderRadius:"var(--radius)", fontWeight:700, fontSize:"0.8125rem", textDecoration:"none", border:"1px solid rgba(99,102,241,0.2)" }}>
-                    ✉️ Email
-                  </a>
-                )}
-              </div>
-
-              {/* Contact info */}
-              <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
-                {selectedContact.email && (
-                  <a href={`mailto:${selectedContact.email}`} style={{ fontSize:"0.875rem", color:"var(--gray-600)", textDecoration:"none", display:"flex", alignItems:"center", gap:"0.5rem" }}>
-                    <span>✉️</span><span style={{ color:"#6366f1" }}>{selectedContact.email}</span>
-                  </a>
-                )}
-                {selectedContact.phone && (
-                  <a href={`tel:${selectedContact.phone.replace(/\D/g,"")}`} style={{ fontSize:"0.875rem", color:"var(--gray-600)", textDecoration:"none", display:"flex", alignItems:"center", gap:"0.5rem" }}>
-                    <span>📞</span><span style={{ color:"#16a34a" }}>{selectedContact.phone}</span>
-                  </a>
-                )}
-                {selectedContact.state && <div style={{ fontSize:"0.875rem", color:"var(--gray-600)", display:"flex", gap:"0.5rem" }}><span>📍</span>{selectedContact.state}</div>}
-                {selectedContact.nextContactDate && (
-                  <div style={{ fontSize:"0.875rem", color:"#d97706", fontWeight:600, display:"flex", gap:"0.5rem" }}>
-                    <span>📅</span>Next contact: {selectedContact.nextContactDate}
-                  </div>
-                )}
-              </div>
-              {selectedContact.notes && (
-                <div style={{ marginTop:"1rem", padding:"0.75rem", background:"var(--gray-50)", borderRadius:"var(--radius)", fontSize:"0.875rem", color:"var(--gray-600)", lineHeight:1.65 }}>{selectedContact.notes}</div>
-              )}
-              {(selectedContact.tags ?? []).length > 0 && (
-                <div style={{ display:"flex", gap:"4px", flexWrap:"wrap", marginTop:"0.75rem" }}>
-                  {selectedContact.tags!.map(tag => (
-                    <span key={tag} style={{ background:"rgba(22,163,74,0.1)", color:"#16a34a", padding:"2px 8px", borderRadius:"4px", fontSize:"0.7rem", fontWeight:700 }}>{tag}</span>
-                  ))}
-                </div>
-              )}
-              <div style={{ display:"flex", gap:"0.5rem", marginTop:"1.25rem" }}>
-                <button onClick={() => { setContactForm({...selectedContact}); setEditingContact(selectedContact); setShowContactForm(true); }} style={{ flex:1, padding:"0.5rem", background:"rgba(99,102,241,0.08)", border:"1px solid rgba(99,102,241,0.2)", borderRadius:"4px", fontSize:"0.8125rem", fontWeight:600, cursor:"pointer", color:"#6366f1", fontFamily:"inherit" }}>Edit</button>
-                <button onClick={() => deleteContact(selectedContact.id)} style={{ flex:1, padding:"0.5rem", background:"rgba(199,25,26,0.06)", color:"var(--red)", border:"1px solid rgba(199,25,26,0.15)", borderRadius:"4px", fontSize:"0.8125rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Delete</button>
-              </div>
-            </div>
-
-            {/* Tasks for contact */}
-            <div className="card" style={{ padding:"1.25rem" }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem" }}>
-                <h3 style={{ fontWeight:700, color:"var(--navy)", fontSize:"0.9375rem" }}>Tasks</h3>
-                <button onClick={() => setShowTaskForm(true)} style={{ padding:"0.3rem 0.75rem", background:"var(--navy)", color:"white", border:"none", borderRadius:"4px", fontSize:"0.75rem", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>+ Add</button>
-              </div>
-              {tasks.filter(t => t.contactId===selectedContact.id).length === 0 ? (
-                <div style={{ color:"var(--gray-400)", fontSize:"0.8125rem" }}>No tasks for this contact.</div>
-              ) : tasks.filter(t => t.contactId===selectedContact.id).map(t => (
-                <div key={t.id} style={{ display:"flex", gap:"0.5rem", alignItems:"flex-start", padding:"0.625rem 0", borderBottom:"1px solid var(--gray-50)" }}>
-                  <button onClick={() => cycleTaskStatus(t)} style={{ padding:"2px 6px", background:TASK_STATUS_STYLE[t.status].bg, color:TASK_STATUS_STYLE[t.status].color, border:"none", borderRadius:"4px", fontSize:"0.7rem", fontWeight:700, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{TASK_STATUS_STYLE[t.status].label}</button>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:"0.875rem", fontWeight:600, color:"var(--navy)", textDecoration:t.status==="done"?"line-through":"none" }}>{t.title}</div>
-                    {t.dueDate && <div style={{ fontSize:"0.75rem", color:"var(--gray-400)" }}>Due {t.dueDate}</div>}
-                  </div>
-                  <button onClick={() => deleteTask(t.id)} style={{ background:"none", border:"none", color:"var(--gray-300)", cursor:"pointer", fontSize:"1rem", lineHeight:1, flexShrink:0 }}>×</button>
-                </div>
+      {/* ── Email Compose Modal ── */}
+      {compose && (
+        <Modal title={compose.isReply?"Reply Email":"Compose Email"} onClose={()=>setCompose(null)} width={700}>
+          {/* Template picker */}
+          <div style={{ marginBottom:"1rem" }}>
+            <div style={{ fontSize:"0.8125rem", fontWeight:700, color:"var(--gray-500)", marginBottom:"0.5rem" }}>QUICK TEMPLATES</div>
+            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+              {EMAIL_TEMPLATES.map(tpl=>(
+                <button key={tpl.label} onClick={()=>applyTemplate(tpl)}
+                  style={{ padding:"0.375rem 0.75rem", background:"var(--gray-100)", color:"var(--gray-700)", border:"1px solid var(--gray-200)", borderRadius:"999px", fontSize:"0.75rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+                  {tpl.label}
+                </button>
               ))}
             </div>
           </div>
-
-          {/* Right: interactions */}
-          <div>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem" }}>
-              <h3 style={{ fontWeight:700, color:"var(--navy)", fontSize:"1rem" }}>Interaction History</h3>
-              <div style={{ display:"flex", gap:"0.5rem" }}>
-                {selectedContact.phone && (
-                  <a href={`tel:${selectedContact.phone.replace(/\D/g,"")}`} onClick={() => { const e: CRMInteraction = { id:`i-${Date.now()}`, contactId:selectedContact.id, type:"call", subject:"Outbound call", body:"", date:new Date().toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"}) }; const u=[e,...interactions]; persistInteractionsAndTasks(u,tasks); setInteractions(u); }} style={{ padding:"0.5rem 1rem", background:"rgba(22,163,74,0.1)", color:"#16a34a", border:"1px solid rgba(22,163,74,0.2)", borderRadius:"var(--radius)", fontWeight:700, fontSize:"0.8125rem", textDecoration:"none", fontFamily:"inherit", cursor:"pointer" }}>
-                    📞 Call & Log
-                  </a>
-                )}
-                {selectedContact.email && (
-                  <a href={`mailto:${selectedContact.email}`} style={{ padding:"0.5rem 1rem", background:"rgba(99,102,241,0.08)", color:"#6366f1", border:"1px solid rgba(99,102,241,0.2)", borderRadius:"var(--radius)", fontWeight:700, fontSize:"0.8125rem", textDecoration:"none" }}>
-                    ✉️ Send Email
-                  </a>
-                )}
-                <button onClick={() => setShowInteractionForm(true)} className="btn-red" style={{ padding:"0.5rem 1.25rem", fontSize:"0.8125rem" }}>+ Log</button>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.875rem" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.875rem" }}>
+              <div>
+                <label className="form-label">To</label>
+                <input className="form-input" value={compose.to} readOnly style={{ background:"var(--gray-50)", color:"var(--gray-500)" }} />
+              </div>
+              <div>
+                <label className="form-label">Contact</label>
+                <input className="form-input" value={compose.toName} readOnly style={{ background:"var(--gray-50)", color:"var(--gray-500)" }} />
               </div>
             </div>
-            {contactInteractions.length === 0 ? (
-              <div className="card" style={{ padding:"2rem", textAlign:"center", color:"var(--gray-400)" }}>No interactions yet. Log your first call, email, or note.</div>
-            ) : (
-              <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-                {contactInteractions.map(int => (
-                  <div key={int.id} className="card" style={{ padding:"1.25rem" }}>
-                    <div style={{ display:"flex", gap:"0.75rem", alignItems:"flex-start" }}>
-                      <span style={{ fontSize:"1.375rem" }}>{INT_ICONS[int.type]}</span>
-                      <div style={{ flex:1 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.375rem", flexWrap:"wrap" }}>
-                          <span style={{ fontWeight:700, color:"var(--navy)", fontSize:"0.9375rem" }}>{int.subject}</span>
-                          <span style={{ fontSize:"0.75rem", color:"var(--gray-400)" }}>{int.date}</span>
-                          <span style={{ background:"var(--gray-100)", color:"var(--gray-500)", padding:"1px 6px", borderRadius:"4px", fontSize:"0.7rem", fontWeight:700 }}>{int.type}</span>
-                        </div>
-                        {int.body && <p style={{ fontSize:"0.875rem", color:"var(--gray-600)", lineHeight:1.65 }}>{int.body}</p>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div>
+              <label className="form-label">Subject *</label>
+              <input className="form-input" placeholder="Email subject…" value={composeSub} onChange={e=>setComposeSub(e.target.value)} />
+            </div>
+            <div>
+              <label className="form-label">Message *</label>
+              <textarea value={composeBody} onChange={e=>setComposeBody(e.target.value)}
+                placeholder="Type your email here…"
+                style={{ width:"100%", minHeight:"200px", padding:"0.875rem 1.125rem", border:"1.5px solid var(--gray-200)", borderRadius:"var(--radius)", fontSize:"0.9375rem", fontFamily:"inherit", resize:"vertical", outline:"none" }} />
+            </div>
+            <div style={{ background:"rgba(22,46,94,0.05)", borderRadius:"var(--radius-sm)", padding:"0.75rem 1rem", fontSize:"0.8125rem", color:"var(--gray-600)" }}>
+              💡 Clicking <strong>Send</strong> will log this email in the CRM timeline and open your email client (Outlook / Gmail / Apple Mail) with the message pre-filled for sending.
+            </div>
           </div>
-        </div>
+          <div style={{ display:"flex", gap:"0.75rem", marginTop:"1.5rem" }}>
+            <button className="btn-red" onClick={sendEmail} disabled={sendingEmail||!composeSub||!composeBody} style={{ padding:"0.875rem 1.75rem" }}>
+              {sendingEmail?"Sending…":"📤 Send Email"}
+            </button>
+            <button className="btn-secondary" onClick={()=>setCompose(null)} style={{ padding:"0.875rem 1.25rem" }}>Cancel</button>
+          </div>
+        </Modal>
       )}
 
-      {/* ── Contacts list ── */}
-      {!selectedContact && view === "contacts" && (
+      {/* ── Contact Form Modal ── */}
+      {showCForm && (
+        <Modal title={editC?"Edit Contact":"New Contact"} onClose={()=>setShowCForm(false)} width={680}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+            <Field label="Full Name *" span><input className="form-input" value={cForm.name??""} onChange={e=>setCForm(p=>({...p,name:e.target.value}))} /></Field>
+            <Field label="Company"><input className="form-input" value={cForm.company??""} onChange={e=>setCForm(p=>({...p,company:e.target.value}))} /></Field>
+            <Field label="Email"><input className="form-input" type="email" value={cForm.email??""} onChange={e=>setCForm(p=>({...p,email:e.target.value}))} /></Field>
+            <Field label="Phone"><input className="form-input" value={cForm.phone??""} onChange={e=>setCForm(p=>({...p,phone:e.target.value}))} /></Field>
+            <Field label="Type">
+              <select className="form-select" value={cForm.type} onChange={e=>setCForm(p=>({...p,type:e.target.value as CRMType}))}>
+                {(["contractor","supplier","homeowner","partner"] as CRMType[]).map(t=><option key={t} value={t}>{TYPE_ICONS[t]} {t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
+              </select>
+            </Field>
+            <Field label="Stage">
+              <select className="form-select" value={cForm.stage} onChange={e=>setCForm(p=>({...p,stage:e.target.value as CRMStage}))}>
+                {STAGES.map(s=><option key={s} value={s}>{STAGE_MAP[s].label}</option>)}
+              </select>
+            </Field>
+            <Field label="Priority">
+              <select className="form-select" value={cForm.priority} onChange={e=>setCForm(p=>({...p,priority:e.target.value as CRMPriority}))}>
+                {(["low","medium","high","urgent"] as CRMPriority[]).map(p=><option key={p} value={p}>{PRIORITY_MAP[p].label}</option>)}
+              </select>
+            </Field>
+            <Field label="Deal Value ($)">
+              <input className="form-input" type="number" min={0} value={cForm.dealValue??""} onChange={e=>setCForm(p=>({...p,dealValue:e.target.value?+e.target.value:undefined}))} placeholder="0" />
+            </Field>
+            <Field label="State / Location">
+              <input className="form-input" value={cForm.state??""} onChange={e=>setCForm(p=>({...p,state:e.target.value}))} placeholder="TX" />
+            </Field>
+            <Field label="Next Contact Date">
+              <input className="form-input" type="date" value={cForm.nextContactDate??""} onChange={e=>setCForm(p=>({...p,nextContactDate:e.target.value}))} />
+            </Field>
+            <Field label="Notes" span>
+              <textarea value={cForm.notes??""} onChange={e=>setCForm(p=>({...p,notes:e.target.value}))}
+                style={{ width:"100%", minHeight:"80px", padding:"0.75rem 1rem", border:"1.5px solid var(--gray-200)", borderRadius:"var(--radius)", fontSize:"0.9375rem", fontFamily:"inherit", resize:"vertical", outline:"none" }} />
+            </Field>
+          </div>
+          <div style={{ display:"flex", gap:"0.75rem", marginTop:"1.5rem" }}>
+            <button className="btn-red" onClick={saveContact} style={{ padding:"0.875rem 1.75rem" }}>
+              {editC?"Save Changes":"Create Contact"}
+            </button>
+            <button className="btn-secondary" onClick={()=>setShowCForm(false)} style={{ padding:"0.875rem 1.25rem" }}>Cancel</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Log Interaction Modal ── */}
+      {showIntForm && selected && (
+        <Modal title={`Log Interaction — ${selected.name}`} onClose={()=>setShowIntForm(false)}>
+          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+            <Field label="Type">
+              <select className="form-select" value={intForm.type} onChange={e=>setIntForm(p=>({...p,type:e.target.value as InteractionType}))}>
+                {(["call","email_out","email_in","message","meeting","note"] as InteractionType[]).map(t=>(
+                  <option key={t} value={t}>{INT_ICONS[t]} {INT_LABELS[t]}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Subject *"><input className="form-input" value={intForm.subject??""} onChange={e=>setIntForm(p=>({...p,subject:e.target.value}))} /></Field>
+            <Field label="Details / Body">
+              <textarea value={intForm.body??""} onChange={e=>setIntForm(p=>({...p,body:e.target.value}))}
+                style={{ width:"100%", minHeight:"100px", padding:"0.75rem 1rem", border:"1.5px solid var(--gray-200)", borderRadius:"var(--radius)", fontSize:"0.9375rem", fontFamily:"inherit", resize:"vertical", outline:"none" }} />
+            </Field>
+          </div>
+          <div style={{ display:"flex", gap:"0.75rem", marginTop:"1.5rem" }}>
+            <button className="btn-red" onClick={saveInteraction} style={{ padding:"0.875rem 1.75rem" }}>Save</button>
+            <button className="btn-secondary" onClick={()=>setShowIntForm(false)} style={{ padding:"0.875rem 1.25rem" }}>Cancel</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Task Form Modal ── */}
+      {showTaskForm && (
+        <Modal title="New Task" onClose={()=>setShowTaskForm(false)}>
+          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+            <Field label="Task Title *"><input className="form-input" value={taskForm.title??""} onChange={e=>setTaskForm(p=>({...p,title:e.target.value}))} /></Field>
+            {selected&&<div style={{ padding:"0.625rem 1rem", background:"var(--gray-50)", borderRadius:"var(--radius-sm)", fontSize:"0.875rem", color:"var(--gray-600)" }}>Linked to: <strong>{selected.name}</strong></div>}
+            <Field label="Status">
+              <select className="form-select" value={taskForm.status} onChange={e=>setTaskForm(p=>({...p,status:e.target.value as TaskStatus}))}>
+                {(["todo","in_progress","follow_up"] as TaskStatus[]).map(s=><option key={s} value={s}>{TASK_MAP[s].label}</option>)}
+              </select>
+            </Field>
+            <Field label="Due Date"><input className="form-input" type="date" value={taskForm.dueDate??""} onChange={e=>setTaskForm(p=>({...p,dueDate:e.target.value}))} /></Field>
+            <Field label="Notes">
+              <textarea value={taskForm.notes??""} onChange={e=>setTaskForm(p=>({...p,notes:e.target.value}))}
+                style={{ width:"100%", minHeight:"80px", padding:"0.75rem 1rem", border:"1.5px solid var(--gray-200)", borderRadius:"var(--radius)", fontSize:"0.9375rem", fontFamily:"inherit", resize:"vertical", outline:"none" }} />
+            </Field>
+          </div>
+          <div style={{ display:"flex", gap:"0.75rem", marginTop:"1.5rem" }}>
+            <button className="btn-red" onClick={saveTask} style={{ padding:"0.875rem 1.75rem" }}>Create Task</button>
+            <button className="btn-secondary" onClick={()=>setShowTaskForm(false)} style={{ padding:"0.875rem 1.25rem" }}>Cancel</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ─── HEADER ─── */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.5rem", flexWrap:"wrap", gap:"1rem" }}>
         <div>
-          <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1.25rem", flexWrap:"wrap" }}>
-            <input className="form-input" placeholder="Search name, email, phone, company…" value={search} onChange={e => setSearch(e.target.value)} style={{ flex:1, minWidth:"200px" }} />
-            <select className="form-input" value={typeFilter} onChange={e => setTypeFilter(e.target.value as CRMType|"all")} style={{ width:"160px" }}>
-              <option value="all">All Types</option>
-              {(["contractor","supplier","homeowner","partner"] as CRMType[]).map(t => (
-                <option key={t} value={t}>{TYPE_ICONS[t]} {t.charAt(0).toUpperCase()+t.slice(1)}</option>
-              ))}
-            </select>
+          <h1 style={{ fontSize:"1.625rem", fontWeight:800, color:"var(--navy)", marginBottom:"0.2rem" }}>CRM</h1>
+          <p style={{ color:"var(--gray-500)", fontSize:"0.875rem" }}>{contacts.length} contacts · {openTasks.length} open tasks · {allEmails.length} emails logged</p>
+        </div>
+        <button className="btn-red" onClick={openNewContact} style={{ padding:"0.75rem 1.5rem" }}>+ New Contact</button>
+      </div>
+
+      {/* ─── KPI STRIP ─── */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:"1rem", marginBottom:"1.75rem" }}>
+        {[
+          { label:"Total Contacts",  value:contacts.length,  color:"var(--navy)" },
+          { label:"Pipeline Value",  value:`$${pipelineVal.toLocaleString()}`, color:"#047857" },
+          { label:"Urgent",          value:urgentCount,       color:"var(--red)" },
+          { label:"Open Tasks",      value:openTasks.length,  color:"#d97706" },
+          { label:"Emails Logged",   value:allEmails.length,  color:"#6366f1" },
+          { label:"Won Deals",       value:contacts.filter(c=>c.stage==="won").length, color:"#16a34a" },
+        ].map(k=>(
+          <div key={k.label} className="card" style={{ padding:"1.125rem", borderTop:`3px solid ${k.color}` }}>
+            <div style={{ fontSize:"1.5rem", fontWeight:800, color:k.color, letterSpacing:"-0.02em" }}>{k.value}</div>
+            <div style={{ fontSize:"0.8125rem", fontWeight:600, color:"var(--gray-500)", marginTop:"0.2rem" }}>{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ─── VIEW TABS ─── */}
+      <div style={{ display:"flex", gap:"0.375rem", marginBottom:"1.5rem", background:"var(--gray-100)", padding:"4px", borderRadius:"var(--radius)", width:"fit-content" }}>
+        {([["contacts","👥 Contacts"],["pipeline","📊 Pipeline"],["tasks","✅ Tasks"],["inbox","📧 Email Inbox"]] as [typeof view, string][]).map(([v,l])=>(
+          <button key={v} onClick={()=>setView(v)} style={{ padding:"0.5rem 1.125rem", border:"none", borderRadius:"calc(var(--radius) - 2px)", cursor:"pointer", fontFamily:"inherit", fontSize:"0.875rem", fontWeight:600, transition:"all 0.15s", background: view===v?"white":"transparent", color: view===v?"var(--navy)":"var(--gray-500)", boxShadow: view===v?"var(--shadow-xs)":"none" }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* ══════════════════════════════════════════
+          CONTACTS VIEW
+      ══════════════════════════════════════════ */}
+      {view==="contacts" && (
+        <div style={{ display:"grid", gridTemplateColumns: selected?"1fr 400px":"1fr", gap:"1.5rem", alignItems:"start" }}>
+          {/* LEFT: Contact list */}
+          <div>
+            {/* Filters */}
+            <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+              <input className="form-input" placeholder="🔍 Search name, email, company…" value={search} onChange={e=>setSearch(e.target.value)} style={{ flex:1, minWidth:"200px", padding:"0.625rem 1rem" }} />
+              <select className="form-select" value={typeFilter} onChange={e=>setTypeFilter(e.target.value as CRMType|"all")} style={{ width:"160px" }}>
+                <option value="all">All Types</option>
+                {(["contractor","supplier","homeowner","partner"] as CRMType[]).map(t=><option key={t} value={t}>{TYPE_ICONS[t]} {t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
+              </select>
+              <select className="form-select" value={stageFilter} onChange={e=>setStageFilter(e.target.value as CRMStage|"all")} style={{ width:"160px" }}>
+                <option value="all">All Stages</option>
+                {STAGES.map(s=><option key={s} value={s}>{STAGE_MAP[s].label}</option>)}
+              </select>
+            </div>
+
+            {filtered.length===0 && (
+              <div className="card" style={{ padding:"3rem", textAlign:"center", color:"var(--gray-400)" }}>
+                <div style={{ fontSize:"2.5rem", marginBottom:"0.75rem" }}>👥</div>
+                <div style={{ fontWeight:600 }}>{contacts.length===0?"No contacts yet — add one above":"No contacts match filters"}</div>
+              </div>
+            )}
+
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
+              {filtered.map(c=>{
+                const st = STAGE_MAP[c.stage];
+                const pr = PRIORITY_MAP[c.priority];
+                const isSelected = selected?.id===c.id;
+                return (
+                  <div key={c.id} onClick={()=>setSelected(isSelected?null:c)}
+                    style={{ padding:"1rem 1.25rem", background:isSelected?"rgba(22,46,94,0.04)":"white", borderRadius:"var(--radius)", border: isSelected?"1.5px solid var(--navy)":"1.5px solid var(--gray-150)", cursor:"pointer", transition:"all 0.15s", display:"flex", alignItems:"center", gap:"1rem" }}>
+                    <div style={{ width:"40px", height:"40px", background: isSelected?"var(--navy)":"var(--gray-150)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, color: isSelected?"white":"var(--gray-500)", fontSize:"1rem", flexShrink:0 }}>
+                      {c.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, color:"var(--navy)", fontSize:"0.9375rem", marginBottom:"0.125rem" }}>{c.name}</div>
+                      <div style={{ fontSize:"0.8125rem", color:"var(--gray-500)" }}>{c.company&&<span>{c.company} · </span>}{c.email||c.phone}</div>
+                    </div>
+                    <div style={{ display:"flex", gap:"0.375rem", flexWrap:"wrap", justifyContent:"flex-end" }}>
+                      <span style={{ fontSize:"1.125rem" }}>{TYPE_ICONS[c.type]}</span>
+                      <Pill text={st.label} color={st.color} bg={st.bg} />
+                      {c.priority!=="medium"&&<Pill text={pr.label} color={pr.color} bg={pr.bg} />}
+                    </div>
+                    <div style={{ display:"flex", gap:"0.375rem", flexShrink:0 }} onClick={e=>e.stopPropagation()}>
+                      {c.email&&<a href={`mailto:${c.email}`} title="Email" style={{ padding:"0.375rem 0.625rem", background:"rgba(99,102,241,0.1)", color:"#6366f1", borderRadius:"6px", fontSize:"0.8125rem", textDecoration:"none" }} onClick={()=>openCompose(c)}>✉️</a>}
+                      {c.phone&&<a href={`tel:${c.phone.replace(/\D/g,"")}`} title="Call" style={{ padding:"0.375rem 0.625rem", background:"rgba(22,163,74,0.1)", color:"#16a34a", borderRadius:"6px", fontSize:"0.8125rem", textDecoration:"none" }}>📞</a>}
+                      <button onClick={()=>openEditContact(c)} style={{ padding:"0.375rem 0.625rem", background:"var(--navy)", color:"white", border:"none", borderRadius:"6px", fontSize:"0.75rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Edit</button>
+                      <button onClick={()=>deleteContact(c.id)} style={{ padding:"0.375rem 0.5rem", background:"rgba(199,25,26,0.08)", color:"var(--red)", border:"none", borderRadius:"6px", fontSize:"0.8125rem", cursor:"pointer" }}>🗑</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {loading ? (
-            <div className="card" style={{ padding:"2rem", textAlign:"center", color:"var(--gray-400)" }}>Loading…</div>
-          ) : filteredContacts.length === 0 ? (
-            <div className="card" style={{ padding:"3rem", textAlign:"center", color:"var(--gray-400)" }}>
-              <div style={{ fontSize:"3rem", marginBottom:"1rem" }}>👥</div>
-              <div style={{ fontWeight:700, marginBottom:"0.5rem" }}>No contacts yet</div>
-              <div style={{ fontSize:"0.875rem" }}>Add your first contractor, supplier, or partner contact.</div>
-              <button onClick={() => { setContactForm({ type:"contractor", priority:"medium" }); setEditingContact(null); setShowContactForm(true); }} className="btn-red" style={{ marginTop:"1.25rem", padding:"0.75rem 1.75rem" }}>+ Add Contact</button>
-            </div>
-          ) : (
-            <div className="card" style={{ overflow:"hidden" }}>
-              <table style={{ width:"100%", borderCollapse:"collapse" }}>
-                <thead>
-                  <tr style={{ background:"var(--gray-50)", borderBottom:"1px solid var(--gray-150)" }}>
-                    {["Contact","Type","Priority","Next Contact","Quick Actions","Actions"].map(h => (
-                      <th key={h} style={{ padding:"0.875rem 1rem", textAlign:"left", fontSize:"0.8rem", fontWeight:700, color:"var(--gray-500)", whiteSpace:"nowrap" }}>{h}</th>
+          {/* RIGHT: Contact detail panel */}
+          {selected && (
+            <div style={{ position:"sticky", top:"90px" }}>
+              <div className="card" style={{ padding:"1.5rem" }}>
+                {/* Header */}
+                <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:"1.25rem" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:"0.875rem" }}>
+                    <div style={{ width:"52px", height:"52px", background:"var(--navy)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, color:"white", fontSize:"1.25rem", flexShrink:0 }}>
+                      {selected.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight:800, color:"var(--navy)", fontSize:"1.0625rem" }}>{selected.name}</div>
+                      {selected.company&&<div style={{ fontSize:"0.875rem", color:"var(--gray-500)" }}>{selected.company}</div>}
+                    </div>
+                  </div>
+                  <button onClick={()=>setSelected(null)} style={{ background:"none", border:"none", color:"var(--gray-400)", cursor:"pointer", fontSize:"1.25rem", padding:"0.25rem" }}>×</button>
+                </div>
+
+                {/* Info */}
+                <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem", marginBottom:"1.25rem", fontSize:"0.875rem" }}>
+                  {selected.email&&<div style={{ display:"flex", alignItems:"center", gap:"0.5rem", color:"var(--gray-600)" }}>📧 <a href={`mailto:${selected.email}`} style={{ color:"var(--navy)", textDecoration:"none", fontWeight:600 }}>{selected.email}</a></div>}
+                  {selected.phone&&<div style={{ display:"flex", alignItems:"center", gap:"0.5rem", color:"var(--gray-600)" }}>📞 <a href={`tel:${selected.phone.replace(/\D/g,"")}`} style={{ color:"var(--navy)", textDecoration:"none", fontWeight:600 }}>{selected.phone}</a></div>}
+                  {selected.state&&<div style={{ color:"var(--gray-600)" }}>📍 {selected.state}</div>}
+                  {selected.dealValue&&<div style={{ color:"#16a34a", fontWeight:700 }}>💰 ${selected.dealValue.toLocaleString()}</div>}
+                  {selected.nextContactDate&&<div style={{ color:"var(--gray-600)" }}>📅 Follow up: {selected.nextContactDate}</div>}
+                </div>
+
+                {/* Stage selector */}
+                <div style={{ marginBottom:"1.25rem" }}>
+                  <div style={{ fontSize:"0.75rem", fontWeight:700, color:"var(--gray-400)", marginBottom:"0.5rem", textTransform:"uppercase", letterSpacing:"0.08em" }}>PIPELINE STAGE</div>
+                  <div style={{ display:"flex", gap:"0.25rem", flexWrap:"wrap" }}>
+                    {STAGES.map(s=>{
+                      const st = STAGE_MAP[s];
+                      const active = selected.stage===s;
+                      return (
+                        <button key={s} onClick={()=>moveStage(selected.id, s)}
+                          style={{ padding:"0.3rem 0.625rem", border: active?`2px solid ${st.color}`:"1px solid var(--gray-200)", borderRadius:"999px", fontSize:"0.75rem", fontWeight:700, cursor:"pointer", fontFamily:"inherit", background: active?st.bg:"white", color: active?st.color:"var(--gray-500)", transition:"all 0.15s" }}>
+                          {st.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {selected.notes&&(
+                  <div style={{ padding:"0.875rem", background:"rgba(245,158,11,0.07)", borderRadius:"var(--radius-sm)", border:"1px solid rgba(245,158,11,0.2)", fontSize:"0.875rem", color:"var(--gray-700)", marginBottom:"1.25rem" }}>
+                    📝 {selected.notes}
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"1.5rem" }}>
+                  {selected.email&&<button onClick={()=>openCompose(selected)} className="btn-red" style={{ padding:"0.5rem 0.875rem", fontSize:"0.8125rem" }}>✉️ Email</button>}
+                  {selected.phone&&<a href={`tel:${selected.phone.replace(/\D/g,"")}`} className="btn-primary" style={{ padding:"0.5rem 0.875rem", fontSize:"0.8125rem" }}>📞 Call</a>}
+                  <button onClick={()=>{ setShowIntForm(true); }} style={{ padding:"0.5rem 0.875rem", border:"1.5px solid var(--gray-200)", background:"white", borderRadius:"var(--radius)", fontSize:"0.8125rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:"var(--gray-700)" }}>+ Log Activity</button>
+                  <button onClick={()=>{ setShowTaskForm(true); }} style={{ padding:"0.5rem 0.875rem", border:"1.5px solid var(--gray-200)", background:"white", borderRadius:"var(--radius)", fontSize:"0.8125rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:"var(--gray-700)" }}>+ Task</button>
+                  {selected.email&&<button onClick={()=>logInboundEmail(selected)} style={{ padding:"0.5rem 0.875rem", border:"1.5px solid rgba(99,102,241,0.3)", background:"rgba(99,102,241,0.06)", borderRadius:"var(--radius)", fontSize:"0.8125rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:"#6366f1" }}>📥 Log Received</button>}
+                </div>
+
+                {/* Tasks for this contact */}
+                {contactTasks.length>0&&(
+                  <div style={{ marginBottom:"1.25rem" }}>
+                    <div style={{ fontSize:"0.75rem", fontWeight:700, color:"var(--gray-400)", marginBottom:"0.5rem", textTransform:"uppercase", letterSpacing:"0.08em" }}>TASKS</div>
+                    {contactTasks.map(t=>{
+                      const ts = TASK_MAP[t.status];
+                      return (
+                        <div key={t.id} style={{ display:"flex", alignItems:"center", gap:"0.5rem", padding:"0.5rem 0", borderBottom:"1px solid var(--gray-50)" }}>
+                          <button onClick={()=>cycleTask(t)} style={{ flexShrink:0, background:ts.bg, color:ts.color, border:"none", borderRadius:"999px", padding:"0.2rem 0.625rem", fontSize:"0.6875rem", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{ts.label}</button>
+                          <span style={{ flex:1, fontSize:"0.875rem", color:"var(--gray-700)", textDecoration:t.status==="done"?"line-through":"none" }}>{t.title}</span>
+                          {t.dueDate&&<span style={{ fontSize:"0.75rem", color:"var(--gray-400)" }}>{t.dueDate}</span>}
+                          <button onClick={()=>deleteTask(t.id)} style={{ background:"none", border:"none", color:"var(--gray-300)", cursor:"pointer", fontSize:"0.875rem" }}>×</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Interaction timeline */}
+                <div>
+                  <div style={{ fontSize:"0.75rem", fontWeight:700, color:"var(--gray-400)", marginBottom:"0.625rem", textTransform:"uppercase", letterSpacing:"0.08em" }}>ACTIVITY TIMELINE</div>
+                  {contactInts.length===0&&<div style={{ fontSize:"0.875rem", color:"var(--gray-400)", padding:"0.5rem 0" }}>No activity yet. Use the buttons above to log your first interaction.</div>}
+                  <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+                    {contactInts.map(i=>(
+                      <div key={i.id} style={{ display:"flex", gap:"0.75rem", paddingBottom:"0.75rem", borderBottom:"1px solid var(--gray-50)" }}>
+                        <div style={{ fontSize:"1.25rem", flexShrink:0, lineHeight:1.4 }}>{INT_ICONS[i.type]}</div>
+                        <div style={{ flex:1 }}>
+                          <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:"0.5rem" }}>
+                            <div style={{ fontWeight:700, fontSize:"0.875rem", color:"var(--navy)" }}>{i.subject}</div>
+                            <div style={{ fontSize:"0.75rem", color:"var(--gray-400)", flexShrink:0 }}>{i.date}</div>
+                          </div>
+                          <div style={{ fontSize:"0.75rem", color:"var(--gray-500)", fontWeight:600, marginBottom:"0.25rem" }}>{INT_LABELS[i.type]}{i.fromEmail&&` from ${i.fromEmail}`}</div>
+                          {i.body&&<div style={{ fontSize:"0.8125rem", color:"var(--gray-600)", lineHeight:1.5 }}>{i.body}</div>}
+                          {(i.type==="email_in"||i.type==="email_out")&&(
+                            <button onClick={()=>openCompose(selected, true, i)} style={{ marginTop:"0.375rem", background:"rgba(99,102,241,0.08)", color:"#6366f1", border:"none", borderRadius:"999px", padding:"0.25rem 0.625rem", fontSize:"0.75rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>↩ Reply</button>
+                          )}
+                        </div>
+                      </div>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredContacts.map((c, i) => (
-                    <tr key={c.id} style={{ borderBottom: i<filteredContacts.length-1 ? "1px solid var(--gray-50)" : "none" }}>
-                      <td style={{ padding:"1rem" }}>
-                        <div style={{ fontWeight:700, color:"var(--navy)", fontSize:"0.9375rem" }}>{c.name}</div>
-                        {c.company && <div style={{ fontSize:"0.8rem", color:"var(--gray-500)" }}>{c.company}</div>}
-                        {c.email && (
-                          <a href={`mailto:${c.email}`} style={{ fontSize:"0.8rem", color:"#6366f1", textDecoration:"none" }}>{c.email}</a>
-                        )}
-                        {c.phone && (
-                          <a href={`tel:${c.phone.replace(/\D/g,"")}`} style={{ display:"block", fontSize:"0.8rem", color:"#16a34a", textDecoration:"none" }}>{c.phone}</a>
-                        )}
-                      </td>
-                      <td style={{ padding:"1rem" }}>
-                        <span style={{ background:"var(--gray-100)", padding:"2px 8px", borderRadius:"999px", fontSize:"0.75rem", fontWeight:700 }}>
-                          {TYPE_ICONS[c.type]} {c.type}
-                        </span>
-                      </td>
-                      <td style={{ padding:"1rem" }}>
-                        <span style={{ background:PRIORITY_STYLE[c.priority].bg, color:PRIORITY_STYLE[c.priority].color, padding:"2px 8px", borderRadius:"999px", fontSize:"0.75rem", fontWeight:700 }}>
-                          {PRIORITY_STYLE[c.priority].label}
-                        </span>
-                      </td>
-                      <td style={{ padding:"1rem", fontSize:"0.8125rem", color:c.nextContactDate?"#d97706":"var(--gray-400)", fontWeight:c.nextContactDate?600:400 }}>
-                        {c.nextContactDate ?? "—"}
-                      </td>
-                      {/* Quick actions: call + email directly from list */}
-                      <td style={{ padding:"1rem" }}>
-                        <div style={{ display:"flex", gap:"0.375rem" }}>
-                          {c.phone ? (
-                            <a href={`tel:${c.phone.replace(/\D/g,"")}`} title={`Call ${c.phone}`} style={{ padding:"0.3rem 0.625rem", background:"rgba(22,163,74,0.1)", color:"#16a34a", border:"1px solid rgba(22,163,74,0.2)", borderRadius:"4px", fontSize:"0.75rem", fontWeight:700, textDecoration:"none", whiteSpace:"nowrap" }}>
-                              📞 Call
-                            </a>
-                          ) : (
-                            <span style={{ padding:"0.3rem 0.625rem", background:"var(--gray-50)", color:"var(--gray-300)", borderRadius:"4px", fontSize:"0.75rem" }}>No phone</span>
-                          )}
-                          {c.email ? (
-                            <a href={`mailto:${c.email}`} title={`Email ${c.email}`} style={{ padding:"0.3rem 0.625rem", background:"rgba(99,102,241,0.08)", color:"#6366f1", border:"1px solid rgba(99,102,241,0.2)", borderRadius:"4px", fontSize:"0.75rem", fontWeight:700, textDecoration:"none", whiteSpace:"nowrap" }}>
-                              ✉️ Email
-                            </a>
-                          ) : (
-                            <span style={{ padding:"0.3rem 0.625rem", background:"var(--gray-50)", color:"var(--gray-300)", borderRadius:"4px", fontSize:"0.75rem" }}>No email</span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ padding:"1rem" }}>
-                        <div style={{ display:"flex", gap:"0.375rem" }}>
-                          <button onClick={() => setSelectedContact(c)} style={{ padding:"0.3rem 0.75rem", background:"var(--navy)", color:"white", border:"none", borderRadius:"4px", fontSize:"0.75rem", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>View</button>
-                          <button onClick={() => { setContactForm({...c}); setEditingContact(c); setShowContactForm(true); }} style={{ padding:"0.3rem 0.625rem", background:"rgba(99,102,241,0.08)", border:"1px solid rgba(99,102,241,0.2)", borderRadius:"4px", fontSize:"0.75rem", fontWeight:600, cursor:"pointer", color:"#6366f1", fontFamily:"inherit" }}>Edit</button>
-                          <button onClick={() => deleteContact(c.id)} style={{ padding:"0.3rem 0.625rem", background:"rgba(199,25,26,0.06)", color:"var(--red)", border:"1px solid rgba(199,25,26,0.15)", borderRadius:"4px", fontSize:"0.75rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Del</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ── Tasks Kanban ── */}
-      {!selectedContact && view === "tasks" && (
+      {/* ══════════════════════════════════════════
+          PIPELINE VIEW (Kanban)
+      ══════════════════════════════════════════ */}
+      {view==="pipeline" && (
         <div>
-          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1.25rem" }}>
-            <button onClick={() => setShowTaskForm(true)} className="btn-red" style={{ padding:"0.75rem 1.25rem", fontSize:"0.875rem" }}>+ New Task</button>
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"1rem" }}>
-            {(["todo","in_progress","follow_up","done"] as TaskStatus[]).map(status => {
-              const colTasks = tasks.filter(t => t.status===status);
-              const st = TASK_STATUS_STYLE[status];
-              return (
-                <div key={status}>
-                  <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", marginBottom:"0.875rem" }}>
-                    <span style={{ background:st.bg, color:st.color, padding:"3px 10px", borderRadius:"999px", fontSize:"0.8125rem", fontWeight:700 }}>{st.label}</span>
-                    <span style={{ fontSize:"0.8125rem", color:"var(--gray-400)", fontWeight:600 }}>{colTasks.length}</span>
-                  </div>
-                  <div style={{ display:"flex", flexDirection:"column", gap:"0.625rem" }}>
-                    {colTasks.map(t => {
-                      const contact = t.contactId ? contacts.find(c => c.id===t.contactId) : null;
-                      return (
-                        <div key={t.id} className="card" style={{ padding:"1rem" }}>
-                          <div style={{ fontWeight:700, color:"var(--navy)", fontSize:"0.875rem", marginBottom:"0.375rem", textDecoration:t.status==="done"?"line-through":"none" }}>{t.title}</div>
-                          {contact && (
-                            <div style={{ fontSize:"0.75rem", color:"var(--gray-500)", marginBottom:"0.375rem", display:"flex", gap:"0.375rem", alignItems:"center" }}>
-                              <span>👤</span>
-                              <button onClick={() => setSelectedContact(contact)} style={{ background:"none", border:"none", color:"#6366f1", fontSize:"0.75rem", cursor:"pointer", padding:0, fontFamily:"inherit", fontWeight:600 }}>{contact.name}</button>
-                            </div>
-                          )}
-                          {t.dueDate && <div style={{ fontSize:"0.75rem", color:"#d97706", fontWeight:600, marginBottom:"0.5rem" }}>📅 {t.dueDate}</div>}
-                          {t.notes && <div style={{ fontSize:"0.75rem", color:"var(--gray-500)", lineHeight:1.5 }}>{t.notes}</div>}
-                          <div style={{ display:"flex", gap:"0.375rem", marginTop:"0.75rem" }}>
-                            <button onClick={() => cycleTaskStatus(t)} style={{ flex:1, padding:"0.3rem", background:st.bg, color:st.color, border:`1px solid ${st.color}30`, borderRadius:"4px", fontSize:"0.7rem", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>→ Next</button>
-                            <button onClick={() => deleteTask(t.id)} style={{ padding:"0.3rem 0.625rem", background:"none", color:"var(--gray-300)", border:"1px solid var(--gray-150)", borderRadius:"4px", fontSize:"0.75rem", cursor:"pointer" }}>×</button>
+          <div style={{ overflowX:"auto", paddingBottom:"1rem" }}>
+            <div style={{ display:"flex", gap:"1rem", minWidth:"900px" }}>
+              {STAGES.map(stage=>{
+                const st    = STAGE_MAP[stage];
+                const cols  = contacts.filter(c=>c.stage===stage);
+                const total = cols.reduce((s,c)=>s+(c.dealValue??0),0);
+                return (
+                  <div key={stage} style={{ flex:1, minWidth:"180px" }}>
+                    {/* Column header */}
+                    <div style={{ background:st.bg, border:`1.5px solid ${st.color}40`, borderRadius:"var(--radius)", padding:"0.75rem 1rem", marginBottom:"0.75rem", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                      <span style={{ fontWeight:700, color:st.color, fontSize:"0.875rem" }}>{st.label}</span>
+                      <span style={{ background:"rgba(0,0,0,0.08)", color:st.color, padding:"0.1rem 0.5rem", borderRadius:"999px", fontSize:"0.75rem", fontWeight:700 }}>{cols.length}</span>
+                    </div>
+                    {total>0&&<div style={{ fontSize:"0.75rem", color:st.color, fontWeight:700, marginBottom:"0.75rem", paddingLeft:"0.25rem" }}>${total.toLocaleString()}</div>}
+                    {/* Cards */}
+                    <div style={{ display:"flex", flexDirection:"column", gap:"0.625rem" }}>
+                      {cols.map(c=>(
+                        <div key={c.id} className="card" style={{ padding:"0.875rem", cursor:"pointer" }} onClick={()=>{ setView("contacts"); setSelected(c); }}>
+                          <div style={{ fontWeight:700, color:"var(--navy)", fontSize:"0.875rem", marginBottom:"0.25rem" }}>{c.name}</div>
+                          {c.company&&<div style={{ fontSize:"0.75rem", color:"var(--gray-400)", marginBottom:"0.375rem" }}>{c.company}</div>}
+                          {c.dealValue&&<div style={{ fontSize:"0.875rem", fontWeight:700, color:"#16a34a", marginBottom:"0.375rem" }}>${c.dealValue.toLocaleString()}</div>}
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                            <span style={{ fontSize:"1rem" }}>{TYPE_ICONS[c.type]}</span>
+                            <Pill text={PRIORITY_MAP[c.priority].label} color={PRIORITY_MAP[c.priority].color} bg={PRIORITY_MAP[c.priority].bg} />
+                          </div>
+                          {/* Move stage buttons */}
+                          <div style={{ display:"flex", gap:"0.25rem", marginTop:"0.625rem" }} onClick={e=>e.stopPropagation()}>
+                            {STAGES.indexOf(stage)>0&&(
+                              <button onClick={()=>moveStage(c.id,STAGES[STAGES.indexOf(stage)-1])} style={{ flex:1, padding:"0.25rem", background:"var(--gray-100)", border:"none", borderRadius:"4px", fontSize:"0.6875rem", cursor:"pointer", fontFamily:"inherit", color:"var(--gray-500)" }}>← Back</button>
+                            )}
+                            {STAGES.indexOf(stage)<STAGES.length-1&&(
+                              <button onClick={()=>moveStage(c.id,STAGES[STAGES.indexOf(stage)+1])} style={{ flex:1, padding:"0.25rem", background:"var(--navy)", color:"white", border:"none", borderRadius:"4px", fontSize:"0.6875rem", cursor:"pointer", fontFamily:"inherit" }}>Next →</button>
+                            )}
                           </div>
                         </div>
-                      );
-                    })}
-                    {colTasks.length === 0 && (
-                      <div style={{ padding:"1rem", border:"2px dashed var(--gray-150)", borderRadius:"var(--radius)", textAlign:"center", color:"var(--gray-300)", fontSize:"0.8125rem" }}>Empty</div>
-                    )}
+                      ))}
+                      {cols.length===0&&(
+                        <div style={{ padding:"1.5rem", textAlign:"center", color:"var(--gray-300)", fontSize:"0.8125rem", border:"2px dashed var(--gray-200)", borderRadius:"var(--radius)" }}>Empty</div>
+                      )}
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          TASKS VIEW
+      ══════════════════════════════════════════ */}
+      {view==="tasks" && (
+        <div>
+          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
+            <button className="btn-red" onClick={()=>setShowTaskForm(true)} style={{ padding:"0.625rem 1.25rem" }}>+ New Task</button>
+          </div>
+          {tasks.length===0&&(
+            <div className="card" style={{ padding:"3rem", textAlign:"center", color:"var(--gray-400)" }}>
+              <div style={{ fontSize:"2.5rem", marginBottom:"0.75rem" }}>✅</div>
+              <div style={{ fontWeight:600 }}>No tasks yet</div>
+            </div>
+          )}
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
+            {tasks.map(t=>{
+              const ts = TASK_MAP[t.status];
+              const contact = contacts.find(c=>c.id===t.contactId);
+              return (
+                <div key={t.id} className="card" style={{ padding:"1rem 1.25rem", display:"flex", alignItems:"center", gap:"1rem", opacity:t.status==="done"?0.6:1 }}>
+                  <button onClick={()=>cycleTask(t)} style={{ background:ts.bg, color:ts.color, border:"none", borderRadius:"999px", padding:"0.3rem 0.75rem", fontSize:"0.75rem", fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>{ts.label}</button>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:600, color:"var(--navy)", fontSize:"0.9375rem", textDecoration:t.status==="done"?"line-through":"none" }}>{t.title}</div>
+                    {contact&&<div style={{ fontSize:"0.8125rem", color:"var(--gray-400)", marginTop:"0.125rem" }}>🔗 {contact.name}</div>}
+                    {t.notes&&<div style={{ fontSize:"0.8125rem", color:"var(--gray-500)", marginTop:"0.125rem" }}>{t.notes}</div>}
+                  </div>
+                  {t.dueDate&&<div style={{ fontSize:"0.8125rem", color: new Date(t.dueDate)<new Date()&&t.status!=="done"?"var(--red)":"var(--gray-400)", fontWeight:600, flexShrink:0 }}>📅 {t.dueDate}</div>}
+                  <button onClick={()=>deleteTask(t.id)} style={{ background:"none", border:"none", color:"var(--gray-300)", cursor:"pointer", fontSize:"1.125rem", flexShrink:0 }}>×</button>
                 </div>
               );
             })}
@@ -530,77 +743,57 @@ export default function CRMPage() {
         </div>
       )}
 
-      {/* ── Contact form modal ── */}
-      {showContactForm && (
-        <Modal title={editingContact ? "Edit Contact" : "New Contact"} onClose={() => { setShowContactForm(false); setEditingContact(null); }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
-            <F label="Name *" span><input className="form-input" value={contactForm.name??""} onChange={e=>setContactForm(p=>({...p,name:e.target.value}))} placeholder="James Carter" style={{ width:"100%" }} /></F>
-            <F label="Type">
-              <select className="form-input" value={contactForm.type??"contractor"} onChange={e=>setContactForm(p=>({...p,type:e.target.value as CRMType}))} style={{ width:"100%" }}>
-                {(["contractor","supplier","homeowner","partner"] as CRMType[]).map(t=><option key={t} value={t}>{TYPE_ICONS[t]} {t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
-              </select>
-            </F>
-            <F label="Priority">
-              <select className="form-input" value={contactForm.priority??"medium"} onChange={e=>setContactForm(p=>({...p,priority:e.target.value as CRMPriority}))} style={{ width:"100%" }}>
-                {(["low","medium","high","urgent"] as CRMPriority[]).map(p=><option key={p} value={p}>{PRIORITY_STYLE[p].label}</option>)}
-              </select>
-            </F>
-            <F label="Company" span><input className="form-input" value={contactForm.company??""} onChange={e=>setContactForm(p=>({...p,company:e.target.value}))} placeholder="Carter Roofing LLC" style={{ width:"100%" }} /></F>
-            <F label="Email">
-              <input className="form-input" type="email" value={contactForm.email??""} onChange={e=>setContactForm(p=>({...p,email:e.target.value}))} placeholder="james@carter.com" style={{ width:"100%" }} />
-            </F>
-            <F label="Phone">
-              <input className="form-input" type="tel" value={contactForm.phone??""} onChange={e=>setContactForm(p=>({...p,phone:e.target.value}))} placeholder="(555) 123-4567" style={{ width:"100%" }} />
-            </F>
-            <F label="State"><input className="form-input" value={contactForm.state??""} onChange={e=>setContactForm(p=>({...p,state:e.target.value}))} placeholder="Texas" style={{ width:"100%" }} /></F>
-            <F label="Next Contact Date"><input className="form-input" type="date" value={contactForm.nextContactDate??""} onChange={e=>setContactForm(p=>({...p,nextContactDate:e.target.value}))} style={{ width:"100%" }} /></F>
-            <F label="Tags (comma-separated)" span><input className="form-input" value={(contactForm.tags??[]).join(",")} onChange={e=>setContactForm(p=>({...p,tags:e.target.value.split(",").map(s=>s.trim()).filter(Boolean)}))} placeholder="roofing, premium, TX" style={{ width:"100%" }} /></F>
-            <F label="Notes" span><textarea className="form-input" rows={3} value={contactForm.notes??""} onChange={e=>setContactForm(p=>({...p,notes:e.target.value}))} placeholder="Key observations…" style={{ width:"100%", resize:"vertical" }} /></F>
+      {/* ══════════════════════════════════════════
+          EMAIL INBOX VIEW
+      ══════════════════════════════════════════ */}
+      {view==="inbox" && (
+        <div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem" }}>
+            <div style={{ fontSize:"0.875rem", color:"var(--gray-500)" }}>All email activity logged in CRM · {allEmails.length} emails</div>
+            <div style={{ padding:"0.625rem 1rem", background:"rgba(99,102,241,0.08)", border:"1px solid rgba(99,102,241,0.2)", borderRadius:"var(--radius)", fontSize:"0.8125rem", color:"#6366f1", fontWeight:600 }}>
+              💡 To receive emails in CRM: connect Mailgun or Gmail integration in Settings
+            </div>
           </div>
-          <div style={{ display:"flex", gap:"0.75rem", marginTop:"1.5rem", justifyContent:"flex-end" }}>
-            <button onClick={() => { setShowContactForm(false); setEditingContact(null); }} className="btn-secondary" style={{ padding:"0.75rem 1.5rem" }}>Cancel</button>
-            <button onClick={saveContact} className="btn-red" style={{ padding:"0.75rem 1.75rem" }}>Save Contact</button>
-          </div>
-        </Modal>
-      )}
 
-      {/* ── Interaction form modal ── */}
-      {showInteractionForm && selectedContact && (
-        <Modal title={`Log Interaction — ${selectedContact.name}`} onClose={() => setShowInteractionForm(false)}>
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-            <F label="Type">
-              <select className="form-input" value={intForm.type??"note"} onChange={e=>setIntForm(p=>({...p,type:e.target.value as InteractionType}))} style={{ width:"100%" }}>
-                {(["call","email","message","meeting","note"] as InteractionType[]).map(t=><option key={t} value={t}>{INT_ICONS[t]} {t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
-              </select>
-            </F>
-            <F label="Subject *"><input className="form-input" value={intForm.subject??""} onChange={e=>setIntForm(p=>({...p,subject:e.target.value}))} placeholder="Called to discuss renewal…" style={{ width:"100%" }} /></F>
-            <F label="Notes"><textarea className="form-input" rows={5} value={intForm.body??""} onChange={e=>setIntForm(p=>({...p,body:e.target.value}))} placeholder="Details of the interaction…" style={{ width:"100%", resize:"vertical" }} /></F>
-          </div>
-          <div style={{ display:"flex", gap:"0.75rem", marginTop:"1.5rem", justifyContent:"flex-end" }}>
-            <button onClick={() => setShowInteractionForm(false)} className="btn-secondary" style={{ padding:"0.75rem 1.5rem" }}>Cancel</button>
-            <button onClick={saveInteraction} className="btn-red" style={{ padding:"0.75rem 1.75rem" }}>Save</button>
-          </div>
-        </Modal>
-      )}
+          {allEmails.length===0&&(
+            <div className="card" style={{ padding:"3rem", textAlign:"center", color:"var(--gray-400)" }}>
+              <div style={{ fontSize:"2.5rem", marginBottom:"0.75rem" }}>📧</div>
+              <div style={{ fontWeight:600, marginBottom:"0.5rem" }}>No emails logged yet</div>
+              <div style={{ fontSize:"0.875rem" }}>Open a contact and click "Email" to compose or "Log Received" to record incoming emails.</div>
+            </div>
+          )}
 
-      {/* ── Task form modal ── */}
-      {showTaskForm && (
-        <Modal title="New Task" onClose={() => setShowTaskForm(false)}>
-          <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
-            <F label="Task Title *"><input className="form-input" value={taskForm.title??""} onChange={e=>setTaskForm(p=>({...p,title:e.target.value}))} placeholder="Follow up on proposal…" style={{ width:"100%" }} /></F>
-            <F label="Status">
-              <select className="form-input" value={taskForm.status??"todo"} onChange={e=>setTaskForm(p=>({...p,status:e.target.value as TaskStatus}))} style={{ width:"100%" }}>
-                {(["todo","in_progress","follow_up","done"] as TaskStatus[]).map(s=><option key={s} value={s}>{TASK_STATUS_STYLE[s].label}</option>)}
-              </select>
-            </F>
-            <F label="Due Date"><input className="form-input" type="date" value={taskForm.dueDate??""} onChange={e=>setTaskForm(p=>({...p,dueDate:e.target.value}))} style={{ width:"100%" }} /></F>
-            <F label="Notes"><textarea className="form-input" rows={3} value={taskForm.notes??""} onChange={e=>setTaskForm(p=>({...p,notes:e.target.value}))} placeholder="Additional context…" style={{ width:"100%", resize:"vertical" }} /></F>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.625rem" }}>
+            {[...allEmails].sort((a,b)=>b.date.localeCompare(a.date)).map(i=>{
+              const contact = contacts.find(c=>c.id===i.contactId);
+              const isOut = i.type==="email_out";
+              return (
+                <div key={i.id} className="card" style={{ padding:"1.125rem 1.5rem", borderLeft:`4px solid ${isOut?"#6366f1":"#16a34a"}` }}>
+                  <div style={{ display:"flex", alignItems:"flex-start", gap:"1rem" }}>
+                    <div style={{ fontSize:"1.5rem", flexShrink:0 }}>{isOut?"📤":"📥"}</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:"1rem", marginBottom:"0.25rem" }}>
+                        <div style={{ fontWeight:700, color:"var(--navy)", fontSize:"0.9375rem" }}>{i.subject}</div>
+                        <div style={{ fontSize:"0.8125rem", color:"var(--gray-400)", flexShrink:0 }}>{i.date}</div>
+                      </div>
+                      <div style={{ fontSize:"0.8125rem", color:"var(--gray-500)", marginBottom:"0.5rem" }}>
+                        {isOut?"Sent to":"Received from"} {contact?.name??i.fromEmail??"Unknown"} {contact?.email&&`<${contact.email}>`}
+                      </div>
+                      {i.body&&<div style={{ fontSize:"0.875rem", color:"var(--gray-600)", lineHeight:1.6, whiteSpace:"pre-wrap", maxHeight:"80px", overflow:"hidden", maskImage:"linear-gradient(to bottom, black 60%, transparent 100%)" }}>{i.body}</div>}
+                    </div>
+                    {contact&&(
+                      <div style={{ flexShrink:0 }}>
+                        <button onClick={()=>openCompose(contact,true,i)} style={{ padding:"0.5rem 0.875rem", background:"rgba(99,102,241,0.1)", color:"#6366f1", border:"none", borderRadius:"var(--radius-xs)", fontSize:"0.8125rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                          ↩ Reply
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div style={{ display:"flex", gap:"0.75rem", marginTop:"1.5rem", justifyContent:"flex-end" }}>
-            <button onClick={() => setShowTaskForm(false)} className="btn-secondary" style={{ padding:"0.75rem 1.5rem" }}>Cancel</button>
-            <button onClick={saveTask} className="btn-red" style={{ padding:"0.75rem 1.75rem" }}>Create Task</button>
-          </div>
-        </Modal>
+        </div>
       )}
     </div>
   );

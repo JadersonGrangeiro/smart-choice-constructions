@@ -26,7 +26,7 @@ export default function Footer() {
 
       <div style={{ padding: "4rem 0 0" }}>
         <div className="container">
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1.6fr) repeat(4,1fr)", gap: "2rem", paddingBottom: "3rem", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "minmax(200px,1.6fr) repeat(4,1fr)", gap: "2rem", paddingBottom: "3rem", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
 
             {/* Brand */}
             <div>
@@ -137,7 +137,7 @@ export default function Footer() {
                   ✓ You're subscribed! Thank you.
                 </div>
               ) : (
-                <form onSubmit={handleNewsletter} style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                <form onSubmit={handleNewsletter} className="footer-newsletter-form" style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
                   <input
                     type="email" required
                     value={email}
@@ -146,7 +146,7 @@ export default function Footer() {
                     style={{
                       background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.1)",
                       borderRadius: "var(--radius)", padding: "0.75rem 1.125rem",
-                      color: "white", fontSize: "0.9375rem", fontFamily: "inherit", outline: "none", minWidth: "240px",
+                      color: "white", fontSize: "0.9375rem", fontFamily: "inherit", outline: "none", flex: 1,
                     }}
                   />
                   <button type="submit" className="btn-red" style={{ padding: "0.75rem 1.5rem" }}>{t.footer.subscribe}</button>

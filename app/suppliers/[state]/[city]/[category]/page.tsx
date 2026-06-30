@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { US_STATES } from "@/lib/data";
-import { SUPPLIER_CATEGORIES, MOCK_SUPPLIERS } from "@/lib/supplier-data";
+import { SUPPLIER_CATEGORIES } from "@/lib/supplier-data";
 import { getStateBySlug, cityToSlug, slugToCity } from "@/lib/locations";
+import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -39,7 +40,16 @@ export default async function SupplierCityCatPage({ params }: { params: Promise<
   const cat = SUPPLIER_CATEGORIES.find(c => c.id === category);
   if (!st || !cat) notFound();
   const cityName = slugToCity(city);
-  const suppliers = MOCK_SUPPLIERS.filter(s => s.categoryId === category);
+  const supabase = createAdminClient();
+  const { data: suppliers } = await supabase
+    .from("suppliers")
+    .select("id, company_name, category, city, state_code, description, phone, logo_url, rating, review_count")
+    .eq("state_code", st.code)
+    .eq("category", cat.id)
+    .eq("is_active", true)
+    .order("is_featured", { ascending: false })
+    .order("rating", { ascending: false })
+    .limit(30);
   const related = SUPPLIER_CATEGORIES.filter(c => c.id !== category && c.group === cat.group).slice(0, 6);
 
   return (
@@ -71,7 +81,7 @@ export default async function SupplierCityCatPage({ params }: { params: Promise<
       </div>
 
       <div className="container" style={{ padding: "3rem 1.5rem" }}>
-        {suppliers.length > 0 ? (
+        {suppliers && suppliers.length > 0 ? (
           <section style={{ marginBottom: "3rem" }}>
             <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--navy)", marginBottom: "1.5rem" }}>
               {cat.name} Near {cityName}
@@ -79,19 +89,21 @@ export default async function SupplierCityCatPage({ params }: { params: Promise<
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {suppliers.map(s => (
                 <div key={s.id} className="card" style={{ padding: "1.5rem", display: "flex", gap: "1.25rem", alignItems: "flex-start" }}>
-                  <div style={{ width: "56px", height: "56px", background: `${cat.color}18`, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{cat.icon}</div>
+                  <div style={{ width: "56px", height: "56px", background: `${cat.color}18`, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
+                    {s.logo_url ? <img src={s.logo_url} alt="" style={{ width: "44px", height: "44px", objectFit: "contain", borderRadius: "8px" }} /> : cat.icon}
+                  </div>
                   <div style={{ flex: 1 }}>
-                    <h3 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{s.name}</h3>
-                    <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)", marginBottom: "0.625rem" }}>{s.location} · {s.yearsInBusiness} yrs in business</div>
-                    <p style={{ color: "var(--gray-600)", fontSize: "0.875rem", lineHeight: 1.65, marginBottom: "0.75rem" }}>{s.description.slice(0, 180)}…</p>
+                    <h3 style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{s.company_name}</h3>
+                    <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)", marginBottom: "0.625rem" }}>{s.city}, {s.state_code}</div>
+                    {s.description && <p style={{ color: "var(--gray-600)", fontSize: "0.875rem", lineHeight: 1.65, marginBottom: "0.75rem" }}>{s.description.slice(0, 180)}{s.description.length > 180 ? "…" : ""}</p>}
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <Stars rating={s.rating} />
-                      <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>({s.reviews})</span>
+                      <Stars rating={s.rating ?? 0} />
+                      <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>({s.review_count ?? 0})</span>
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", flexShrink: 0 }}>
                     <Link href={`/suppliers/profile/${s.id}`} className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>View Profile</Link>
-                    <a href={`tel:${s.phone}`} className="btn-secondary" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>Call</a>
+                    {s.phone && <a href={`tel:${s.phone}`} className="btn-secondary" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem" }}>Call</a>}
                   </div>
                 </div>
               ))}

@@ -4,10 +4,22 @@ import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/server";
 import { SUPPLIER_CATEGORIES, getSupplierCategoryById } from "@/lib/supplier-data";
 
-const SUPPLIER_STORE_PHOTO = "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&q=80";
+const DEFAULT_SUPPLIER_COVER = "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&q=80";
 
-function getSupplierCoverPhoto(_catId: string | undefined, _catName: string | undefined): string {
-  return SUPPLIER_STORE_PHOTO;
+async function getSupplierDefaultCover(): Promise<string> {
+  try {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "site_images")
+      .single();
+    if (data?.value) {
+      const parsed = JSON.parse(data.value);
+      if (parsed?.supplier_default_cover) return parsed.supplier_default_cover;
+    }
+  } catch {}
+  return DEFAULT_SUPPLIER_COVER;
 }
 
 export const dynamic = "force-dynamic";
@@ -67,7 +79,7 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
     ...(brands.length > 0 ? [{ q: "What brands do you carry?", a: `Current brands include: ${brands.join(", ")}. Product availability may vary — contact us for current stock.` }] : []),
   ];
 
-  const coverPhoto = getSupplierCoverPhoto(cat?.id, cat?.name);
+  const coverPhoto = s.cover_url || await getSupplierDefaultCover();
 
   return (
     <div style={{ paddingTop: "76px" }}>

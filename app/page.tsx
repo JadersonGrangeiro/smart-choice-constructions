@@ -49,11 +49,26 @@ function Accordion({ question, answer }: { question: string; answer: string }) {
   );
 }
 
+const DEFAULT_HERO = "https://images.unsplash.com/photo-1599427303058-f04cbcf4756f?w=900&q=80";
+const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=88&h=88&fit=crop&q=80";
+
 export default function Home() {
   const { t } = useI18n();
   const [counts, setCounts]   = useState([0, 0, 0, 0]);
   const statsRef = useRef<HTMLDivElement>(null);
   const animated = useRef(false);
+  const [heroImg, setHeroImg] = useState(DEFAULT_HERO);
+  const [avatarImg, setAvatarImg] = useState(DEFAULT_AVATAR);
+
+  useEffect(() => {
+    fetch("/api/admin/platform-data?key=site_images")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.value?.homepage_hero) setHeroImg(d.value.homepage_hero);
+        if (d?.value?.homepage_contractor_avatar) setAvatarImg(d.value.homepage_contractor_avatar);
+      })
+      .catch(() => {});
+  }, []);
 
 
   useEffect(() => {
@@ -130,7 +145,7 @@ export default function Home() {
 
               {/* Pricing teaser */}
               <div className="animate-fade-in delay-500" style={{ marginTop: "2rem" }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "1.25rem", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: "var(--radius-lg)", padding: "1rem 1.375rem" }}>
+                <div className="hero-pricing-teaser" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "1.25rem", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: "var(--radius-lg)", padding: "1rem 1.375rem" }}>
                   <div>
                     <div style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.5)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "0.2rem" }}>For Contractors</div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: "0.375rem" }}>
@@ -151,7 +166,7 @@ export default function Home() {
               {/* Main photo */}
               <div style={{ position: "absolute", top: 0, left: "5%", right: 0, borderRadius: "var(--radius-2xl)", height: "370px", overflow: "hidden", boxShadow: "0 32px 64px rgba(0,0,0,0.35)" }}>
                 <img
-                  src="https://images.unsplash.com/photo-1599427303058-f04cbcf4756f?w=900&q=80"
+                  src={heroImg}
                   alt="Professional roofer installing shingles on a residential roof"
                   style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
                 />
@@ -171,7 +186,7 @@ export default function Home() {
               {/* Floating contractor card */}
               <div className="animate-float" style={{ position: "absolute", bottom: "20px", left: 0, background: "white", borderRadius: "var(--radius-lg)", padding: "1rem 1.25rem", boxShadow: "var(--shadow-xl)", border: "1px solid var(--gray-100)", display: "flex", alignItems: "center", gap: "0.875rem", minWidth: "240px" }}>
                 <img
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=88&h=88&fit=crop&q=80"
+                  src={avatarImg}
                   alt="Marcus Rivera"
                   style={{ width: "44px", height: "44px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
                 />
@@ -348,7 +363,7 @@ export default function Home() {
       {/* ── FOR CONTRACTORS ── */}
       <section style={{ background: "var(--navy)", padding: "5rem 0" }}>
         <div className="container">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", alignItems: "center" }}>
+          <div className="contractors-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", alignItems: "center" }}>
             <Reveal>
               <span className="badge badge-white" style={{ marginBottom: "1.5rem" }}>{t.sections.forContractorsBadge}</span>
               <h2 className="heading-lg" style={{ color: "white", marginBottom: "1.25rem" }}>{t.sections.forContractorsTitle}</h2>
@@ -494,7 +509,11 @@ export default function Home() {
 
       {/* FAQ JSON-LD */}
       <style>{`
-        @media (max-width: 768px) { .hero-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 768px) {
+          .hero-grid { grid-template-columns: 1fr !important; }
+          .contractors-grid { grid-template-columns: 1fr !important; gap: 2rem !important; }
+          .hero-pricing-teaser { flex-wrap: wrap !important; }
+        }
         .state-pill:hover { border-color: var(--navy) !important; color: var(--navy) !important; background: white !important; }
       `}</style>
     </>

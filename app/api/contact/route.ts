@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendContactEmail } from "@/lib/resend/emails";
+import { rateLimit, getIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const rl = rateLimit(getIp(request), 5, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ error: "Too many requests. Please wait a minute." }, {
+      status: 429, headers: { "Retry-After": String(rl.retryAfter) },
+    });
+  }
+
   try {
     const body = await request.json();
     const { firstName, lastName, email, phone, userType, subject, message } = body;

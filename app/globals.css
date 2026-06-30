@@ -286,11 +286,43 @@ footer { background:var(--navy-dark); color:var(--gray-400); }
 .mobile-menu.open { display:block; }
 
 /* ─── Responsive ─── */
+html, body { overflow-x: hidden; }
+
 @media (max-width:768px) {
   .section { padding:3.5rem 0; }
   .section-lg { padding:4.5rem 0; }
   .hide-mobile { display:none !important; }
+
+  /* Hero: single column so content uses full width */
+  .hero-grid { grid-template-columns: 1fr !important; }
+
+  /* For Contractors: collapse to single column */
+  .contractors-grid { grid-template-columns: 1fr !important; gap: 2rem !important; }
+
+  /* Footer: 2-column layout on tablet/mobile */
+  .footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  /* Newsletter: stack form vertically */
+  .footer-newsletter-form { flex-direction: column !important; }
+  .footer-newsletter-form input { width: 100% !important; min-width: 0 !important; }
+  .footer-newsletter-form button { width: 100%; }
+
+  /* Hero pricing teaser: allow wrap on small screens */
+  .hero-pricing-teaser { flex-wrap: wrap !important; }
+
+  /* Section padding */
+  .section { padding: 3rem 0; }
+  .section-sm { padding: 2rem 0; }
 }
+
+@media (max-width:480px) {
+  /* Footer: single column on phones */
+  .footer-grid { grid-template-columns: 1fr !important; }
+}
+
 @media (min-width:769px) {
   .show-mobile-only { display:none !important; }
 }

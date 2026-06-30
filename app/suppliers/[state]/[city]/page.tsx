@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { US_STATES } from "@/lib/data";
-import { SUPPLIER_CATEGORIES, MOCK_SUPPLIERS, getSuppliersByCity } from "@/lib/supplier-data";
+import { SUPPLIER_CATEGORIES } from "@/lib/supplier-data";
 import { getStateBySlug, cityToSlug, slugToCity } from "@/lib/locations";
+import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -37,7 +38,16 @@ export default async function SupplierCityPage({ params }: { params: Promise<{ s
   const st = getStateBySlug(state);
   if (!st) notFound();
   const cityName = slugToCity(city);
-  const citySuppliers = getSuppliersByCity(cityName, st.code);
+  const supabase = createAdminClient();
+  const { data: citySuppliers } = await supabase
+    .from("suppliers")
+    .select("id, company_name, category, city, state_code, logo_url, rating, review_count")
+    .eq("state_code", st.code)
+    .ilike("city", `%${cityName}%`)
+    .eq("is_active", true)
+    .order("is_featured", { ascending: false })
+    .order("rating", { ascending: false })
+    .limit(20);
   const allCats = SUPPLIER_CATEGORIES.slice(0, 16);
   const nearbyCities = st.cities.filter(c => cityToSlug(c) !== city).slice(0, 6);
 
@@ -68,23 +78,23 @@ export default async function SupplierCityPage({ params }: { params: Promise<{ s
 
       <div className="container" style={{ padding: "3.5rem 1.5rem" }}>
         {/* Local suppliers */}
-        {citySuppliers.length > 0 && (
+        {citySuppliers && citySuppliers.length > 0 && (
           <section style={{ marginBottom: "3.5rem" }}>
             <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "var(--navy)", marginBottom: "1.5rem" }}>
               Suppliers Near {cityName}
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {citySuppliers.map(s => {
-                const cat = SUPPLIER_CATEGORIES.find(c => c.id === s.categoryId);
+                const cat = SUPPLIER_CATEGORIES.find(c => c.id === s.category);
                 return (
                   <div key={s.id} className="card" style={{ padding: "1.5rem", display: "flex", gap: "1.25rem", alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ width: "52px", height: "52px", background: `${cat?.color ?? "var(--navy)"}18`, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
-                      {cat?.icon ?? "🏢"}
+                      {s.logo_url ? <img src={s.logo_url} alt="" style={{ width: "40px", height: "40px", objectFit: "contain", borderRadius: "8px" }} /> : (cat?.icon ?? "🏢")}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{s.name}</div>
-                      <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)", marginBottom: "0.25rem" }}>{cat?.name}</div>
-                      <div><Stars rating={s.rating} /> <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>({s.reviews})</span></div>
+                      <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: "1rem", marginBottom: "0.25rem" }}>{s.company_name}</div>
+                      <div style={{ fontSize: "0.8125rem", color: "var(--gray-500)", marginBottom: "0.25rem" }}>{cat?.name ?? s.category}</div>
+                      <div><Stars rating={s.rating ?? 0} /> <span style={{ fontSize: "0.8125rem", color: "var(--gray-400)" }}>({s.review_count ?? 0})</span></div>
                     </div>
                     <Link href={`/suppliers/profile/${s.id}`} className="btn-red" style={{ padding: "0.625rem 1.25rem", fontSize: "0.875rem", flexShrink: 0 }}>View</Link>
                   </div>

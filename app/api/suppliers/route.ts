@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { rateLimit, getIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const rl = rateLimit(getIp(request), 60, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ error: "Too many requests." }, {
+      status: 429, headers: { "Retry-After": String(rl.retryAfter) },
+    });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const category   = searchParams.get("category");

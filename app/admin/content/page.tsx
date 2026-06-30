@@ -299,7 +299,23 @@ function BlogTab({ showToast }: { showToast:(m:string,t?:"success"|"error")=>voi
             <F label="Author"><Input value={form.author??""} onChange={e=>setForm(p=>({...p,author:e.target.value}))} placeholder="James Carter" /></F>
             <F label="Date"><Input value={form.date??""} onChange={e=>setForm(p=>({...p,date:e.target.value}))} placeholder="June 30, 2025" /></F>
             <F label="Read Time"><Input value={form.readTime??""} onChange={e=>setForm(p=>({...p,readTime:e.target.value}))} placeholder="5 min" /></F>
-            <F label="Hero Image URL" span><Input value={form.image??""} onChange={e=>setForm(p=>({...p,image:e.target.value}))} placeholder="https://images.unsplash.com/photo-…" /></F>
+            <F label="Hero Image" span>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+                <Input value={form.image??""} onChange={e=>setForm(p=>({...p,image:e.target.value}))} placeholder="https://images.unsplash.com/photo-… or upload" />
+                <label style={{ flexShrink:0, background:"var(--navy)", color:"white", border:"none",
+                  borderRadius:"var(--radius-sm)", padding:"0.5rem 1rem", cursor:"pointer",
+                  fontSize:"0.8125rem", fontWeight:600, whiteSpace:"nowrap" }}>
+                  Upload
+                  <input type="file" accept="image/*" style={{ display:"none" }} onChange={async e=>{
+                    const f=e.target.files?.[0]; if(!f) return;
+                    const fd=new FormData(); fd.append("file",f); fd.append("bucket","blog-images");
+                    const r=await fetch("/api/admin/upload",{method:"POST",body:fd});
+                    if(r.ok){ const {url}=await r.json(); setForm(p=>({...p,image:url})); }
+                    e.target.value="";
+                  }} />
+                </label>
+              </div>
+            </F>
             {form.image && <div style={{ gridColumn:"1/-1" }}><img src={form.image} alt="" style={{ width:"100%", maxHeight:"180px", objectFit:"cover", borderRadius:"var(--radius)", border:"1px solid var(--gray-150)" }} /></div>}
             <F label="Excerpt" span><Textarea rows={2} value={form.excerpt??""} onChange={e=>setForm(p=>({...p,excerpt:e.target.value}))} placeholder="Short description shown in listings…" /></F>
             <F label="Full Content (paragraphs — separate with blank lines)" span>
