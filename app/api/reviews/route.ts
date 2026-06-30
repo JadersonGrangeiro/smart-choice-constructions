@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { sendNewReviewEmail } from "@/lib/resend/emails";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -61,6 +62,26 @@ export async function POST(request: Request) {
 
     // Refresh contractor ranking score
     await adminSupabase.rpc("compute_ranking_score", { p_contractor_id: contractor_id });
+
+    // Notify contractor of new review (fire-and-forget)
+    void (async () => {
+      try {
+        const { data: contractor } = await adminSupabase
+          .from("contractors")
+          .select("email, owner_first_name")
+          .eq("id", contractor_id)
+          .single();
+        if (contractor) {
+          await sendNewReviewEmail({
+            to:             contractor.email,
+            contractorName: contractor.owner_first_name,
+            reviewerName:   reviewer_name,
+            rating,
+            reviewBody,
+          });
+        }
+      } catch { /* ignore email errors */ }
+    })();
 
     return NextResponse.json({ review: data }, { status: 201 });
   } catch (error) {

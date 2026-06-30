@@ -61,10 +61,12 @@ export async function POST(request: Request) {
 
     if (contractor) {
       sendQuoteNotificationEmail({
-        to:           contractor.email,
+        to:             contractor.email,
         contractorName: contractor.owner_first_name,
-        serviceName:  service_type,
-        clientName:   contact_name,
+        serviceName:    service_type,
+        clientName:     contact_name,
+        city:           city ? `${city}${state_code ? `, ${state_code}` : ""}` : undefined,
+        budgetRange:    budget_range || undefined,
       }).catch(console.error);
     }
 

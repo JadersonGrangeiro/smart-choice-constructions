@@ -16,15 +16,56 @@ async function sendEmail(payload: Parameters<Resend["emails"]["send"]>[0]): Prom
 }
 
 function html(body: string) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;margin:0;padding:20px}
-    .wrap{max-width:580px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden}
-    .head{background:#162e5e;padding:28px 32px}
-    .head h1{color:#fff;margin:0;font-size:22px;font-weight:800}
-    .body{padding:32px}
-    .btn{display:inline-block;background:#c7191a;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;margin-top:16px}
-    .foot{padding:20px 32px;background:#f9f9f9;font-size:13px;color:#666;text-align:center}
-  </style></head><body><div class="wrap">${body}</div></body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+    *{box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f4f8;margin:0;padding:24px 16px;color:#1e293b}
+    .wrap{max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)}
+    .head{background:linear-gradient(135deg,#162e5e 0%,#1e3a6e 100%);padding:28px 36px;display:flex;align-items:center;gap:12px}
+    .head-logo{display:flex;align-items:center;gap:8px}
+    .head-logo-mark{width:36px;height:30px}
+    .head-brand{color:white}
+    .head-brand-main{font-weight:900;font-size:14px;letter-spacing:.04em;text-transform:uppercase;line-height:1.1}
+    .head-brand-sub{font-weight:700;font-size:9px;letter-spacing:.18em;text-transform:uppercase;opacity:.55}
+    .head-title{color:#fff;margin:0 0 0 auto;font-size:18px;font-weight:800;text-align:right}
+    .body{padding:32px 36px}
+    .body p{margin:0 0 16px;line-height:1.7;color:#374151;font-size:15px}
+    .body h2{font-size:20px;font-weight:800;color:#162e5e;margin:0 0 12px}
+    .highlight{background:#f0f6ff;border-left:4px solid #162e5e;padding:14px 18px;border-radius:0 8px 8px 0;margin:20px 0}
+    .highlight p{margin:4px 0;color:#1e3a6e;font-weight:600;font-size:14px}
+    .stats{display:flex;gap:12px;margin:20px 0;flex-wrap:wrap}
+    .stat{flex:1;min-width:120px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px;text-align:center}
+    .stat-val{font-size:24px;font-weight:900;color:#162e5e}
+    .stat-lbl{font-size:12px;color:#64748b;font-weight:600;margin-top:2px}
+    .btn{display:inline-block;background:#c7191a;color:#fff!important;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px;margin-top:16px;letter-spacing:.01em}
+    .btn-outline{display:inline-block;background:transparent;color:#162e5e!important;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;margin-top:12px;margin-left:12px;border:2px solid #162e5e}
+    .foot{padding:20px 36px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;color:#94a3b8;text-align:center;line-height:1.6}
+    .foot a{color:#94a3b8}
+    .divider{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
+    .stars{color:#f59e0b;font-size:18px;letter-spacing:2px}
+  </style></head><body><div class="wrap">
+    <div class="head">
+      <div class="head-logo">
+        <svg class="head-logo-mark" viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="10,72 60,18 88,51" stroke="white" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+          <rect x="74" y="28" width="11" height="22" rx="1.5" fill="white"/>
+          <line x1="88" y1="51" x2="116" y2="51" stroke="white" stroke-width="8" stroke-linecap="round"/>
+          <rect x="43" y="42" width="8" height="8" rx="1" fill="#C7191A"/>
+          <rect x="53" y="42" width="8" height="8" rx="1" fill="#C7191A"/>
+          <rect x="43" y="52" width="8" height="8" rx="1" fill="#C7191A"/>
+          <rect x="53" y="52" width="8" height="8" rx="1" fill="#C7191A"/>
+        </svg>
+        <div class="head-brand">
+          <div class="head-brand-main">Smart Choice</div>
+          <div class="head-brand-sub">Constructions</div>
+        </div>
+      </div>
+    </div>
+    ${body}
+    <div class="foot">
+      Smart Choice Constructions LLC · 2222 W Grand River Ave, Okemos, MI 48864<br/>
+      <a href="${BASE}">smartchoiceconstructions.com</a> · <a href="${BASE}/unsubscribe">Unsubscribe</a>
+    </div>
+  </div></body></html>`;
 }
 
 export async function sendWelcomeEmail({
@@ -33,16 +74,19 @@ export async function sendWelcomeEmail({
   await sendEmail({
     from: `Smart Choice <${FROM}>`,
     to,
-    subject: "Welcome to Smart Choice Constructions!",
+    subject: `Welcome, ${firstName}! Your profile is under review`,
     html: html(`
-      <div class="head"><h1>Welcome, ${firstName}!</h1></div>
       <div class="body">
-        <p>Your payment was successful and <strong>${companyName}</strong> is now under review.</p>
-        <p>Our team reviews new profiles within <strong>24 hours</strong>. Once approved, your profile will go live and you'll start receiving leads from homeowners in your area.</p>
-        <a href="${BASE}/login" class="btn">Go to Dashboard →</a>
-        <p style="margin-top:24px;color:#666;font-size:14px">While you wait, log in to add more photos, update your profile, and check your dashboard.</p>
+        <h2>Welcome to Smart Choice, ${firstName}!</h2>
+        <p>Your payment was successful. <strong>${companyName}</strong> is now under review by our team.</p>
+        <div class="highlight">
+          <p>⏱ Review typically takes less than 24 hours</p>
+          <p>📧 We'll email you the moment your profile goes live</p>
+          <p>📈 You'll immediately start appearing in local searches</p>
+        </div>
+        <p>While you wait, log in to complete your profile — contractors with full profiles receive <strong>3× more leads</strong>.</p>
+        <a href="${BASE}/dashboard/contractor" class="btn">Complete My Profile →</a>
       </div>
-      <div class="foot">Smart Choice Constructions LLC · 2222 W Grand River Ave, Okemos, MI 48864</div>
     `),
   });
 }
@@ -53,15 +97,19 @@ export async function sendApprovalEmail({
   await sendEmail({
     from: `Smart Choice <${FROM}>`,
     to,
-    subject: "Your profile is now LIVE!",
+    subject: `🎉 ${companyName} is LIVE on Smart Choice!`,
     html: html(`
-      <div class="head"><h1>You're live, ${firstName}!</h1></div>
       <div class="body">
-        <p><strong>${companyName}</strong> has been approved and your profile is now visible to homeowners searching in your area.</p>
-        <p>Start getting leads now by completing your profile and adding project photos.</p>
-        <a href="${BASE}/dashboard/contractor" class="btn">View My Dashboard →</a>
+        <h2>You're live, ${firstName}! 🎉</h2>
+        <p><strong>${companyName}</strong> has been approved. Your profile is now visible to homeowners searching in your area.</p>
+        <div class="highlight">
+          <p>✅ Profile visible in local search results</p>
+          <p>📨 You'll receive email alerts for new leads</p>
+          <p>⭐ Start collecting 5-star reviews to rank higher</p>
+        </div>
+        <p>Maximize your visibility by adding project photos, setting your availability, and uploading your license and insurance documents.</p>
+        <a href="${BASE}/dashboard/contractor" class="btn">Go to Dashboard →</a>
       </div>
-      <div class="foot">Smart Choice Constructions LLC</div>
     `),
   });
 }
@@ -193,20 +241,72 @@ export async function sendCrmEmail({
 }
 
 export async function sendQuoteNotificationEmail({
-  to, contractorName, serviceName, clientName,
-}: { to: string; contractorName: string; serviceName: string; clientName: string }) {
+  to, contractorName, serviceName, clientName, city, budgetRange,
+}: { to: string; contractorName: string; serviceName: string; clientName: string; city?: string; budgetRange?: string }) {
   await sendEmail({
     from: `Smart Choice <${FROM}>`,
     to,
-    subject: `New quote request: ${serviceName}`,
+    subject: `New lead: ${serviceName} — ${clientName}`,
     html: html(`
-      <div class="head"><h1>New Lead!</h1></div>
       <div class="body">
-        <p>Hi ${contractorName}, you have a new quote request from <strong>${clientName}</strong> for <strong>${serviceName}</strong>.</p>
-        <p>Respond quickly — contractors who reply within 1 hour get 4× more jobs.</p>
-        <a href="${BASE}/dashboard/contractor" class="btn">View Lead →</a>
+        <h2>📨 New Quote Request</h2>
+        <p>Hi ${contractorName}, you have a new lead on Smart Choice!</p>
+        <div class="highlight">
+          <p>👤 <strong>Client:</strong> ${clientName}</p>
+          <p>🔧 <strong>Service:</strong> ${serviceName}</p>
+          ${city ? `<p>📍 <strong>Location:</strong> ${city}</p>` : ""}
+          ${budgetRange ? `<p>💰 <strong>Budget:</strong> ${budgetRange}</p>` : ""}
+        </div>
+        <p>⚡ <strong>Respond fast</strong> — contractors who reply within 1 hour win 4× more jobs.</p>
+        <a href="${BASE}/dashboard/contractor" class="btn">View Full Lead Details →</a>
       </div>
-      <div class="foot">Smart Choice Constructions LLC</div>
+    `),
+  });
+}
+
+export async function sendNewReviewEmail({
+  to, contractorName, reviewerName, rating, reviewBody,
+}: { to: string; contractorName: string; reviewerName: string; rating: number; reviewBody: string }) {
+  const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+  await sendEmail({
+    from: `Smart Choice <${FROM}>`,
+    to,
+    subject: `New ${rating}-star review from ${reviewerName}`,
+    html: html(`
+      <div class="body">
+        <h2>You have a new review!</h2>
+        <p>Hi ${contractorName}, <strong>${reviewerName}</strong> just left you a review on Smart Choice.</p>
+        <div class="highlight">
+          <p class="stars">${stars}</p>
+          <p style="margin-top:8px;font-style:italic;color:#374151">"${reviewBody.length > 200 ? reviewBody.slice(0, 197) + "…" : reviewBody}"</p>
+          <p style="margin-top:8px;color:#64748b;font-size:13px">— ${reviewerName}</p>
+        </div>
+        <p>Respond to this review to show future clients how you engage with your customers.</p>
+        <a href="${BASE}/dashboard/contractor" class="btn">Respond to Review →</a>
+      </div>
+    `),
+  });
+}
+
+export async function sendSupplierApplicationEmail({
+  to, companyName, contactName, category,
+}: { to: string; companyName: string; contactName: string; category: string }) {
+  await sendEmail({
+    from: `Smart Choice <${FROM}>`,
+    to,
+    subject: `Application received — ${companyName}`,
+    html: html(`
+      <div class="body">
+        <h2>Application Received!</h2>
+        <p>Hi ${contactName.split(" ")[0]}, we've received your supplier application for <strong>${companyName}</strong>.</p>
+        <div class="highlight">
+          <p>📦 <strong>Category:</strong> ${category}</p>
+          <p>⏱ <strong>Review time:</strong> 1–2 business days</p>
+          <p>📧 <strong>Next step:</strong> We'll email you once your listing is live</p>
+        </div>
+        <p>Your listing will be visible to contractors searching for ${category} in your area. The listing is completely free — no credit card required.</p>
+        <p>Questions? Reply to this email or contact us at <a href="mailto:hello@smartchoiceconstructions.com">hello@smartchoiceconstructions.com</a></p>
+      </div>
     `),
   });
 }

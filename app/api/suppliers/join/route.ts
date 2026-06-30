@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { rateLimit, getIp } from "@/lib/rate-limit";
+import { sendSupplierApplicationEmail } from "@/lib/resend/emails";
 
 export const dynamic = "force-dynamic";
 
@@ -40,15 +41,14 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    // Notify admin by sending a platform notification (fire-and-forget)
-    fetch(`${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/api/admin/platform-data`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        key: `supplier_application_${Date.now()}`,
-        value: { company_name, contact_name, email, category, state_code, city, submitted_at: new Date().toISOString() },
-      }),
-    }).catch(() => {});
+    // Send confirmation to applicant (fire-and-forget)
+    const catLabel = category.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
+    sendSupplierApplicationEmail({
+      to:          email.trim().toLowerCase(),
+      companyName: company_name.trim(),
+      contactName: contact_name?.trim() ?? company_name.trim(),
+      category:    catLabel,
+    }).catch(console.error);
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {
