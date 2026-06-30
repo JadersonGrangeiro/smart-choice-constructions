@@ -48,7 +48,13 @@ export default function CampaignsPage() {
     try {
       const res = await fetch("/api/admin/platform-data?key=campaigns");
       const json = await res.json();
-      if (json.value && Array.isArray(json.value)) setCampaigns(json.value);
+      if (json.value && Array.isArray(json.value) && json.value.length > 0) {
+        setCampaigns(json.value);
+      } else {
+        // Seed the database with sample campaigns on first load
+        setCampaigns(MOCK_CAMPAIGNS);
+        fetch("/api/admin/platform-data", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "campaigns", value: MOCK_CAMPAIGNS }) }).catch(() => {});
+      }
     } catch {}
   }, []);
 

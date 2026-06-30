@@ -51,18 +51,29 @@ export default function Footer() {
               <p style={{ fontSize: "0.875rem", color: "var(--gray-400)", lineHeight: 1.75, marginBottom: "1.5rem", maxWidth: "240px" }}>
                 America's most trusted platform connecting homeowners with verified local contractors.
               </p>
-              {/* Social — links added when profiles are live */}
+              {/* Social */}
               <div style={{ display: "flex", gap: "0.625rem" }}>
                 {[
-                  { label: "f",  title: "Facebook" },
-                  { label: "ig", title: "Instagram" },
-                  { label: "X",  title: "X / Twitter" },
-                  { label: "in", title: "LinkedIn" },
+                  { label: "f",  title: "Facebook",    href: COMPANY.social.facebook },
+                  { label: "ig", title: "Instagram",   href: COMPANY.social.instagram },
+                  { label: "X",  title: "X / Twitter", href: COMPANY.social.twitter },
+                  { label: "in", title: "LinkedIn",    href: COMPANY.social.linkedin },
                 ].map(s => (
-                  <span key={s.label} title={`${s.title} — coming soon`}
-                    style={{ width: "34px", height: "34px", background: "rgba(255,255,255,0.04)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gray-600)", fontSize: "0.75rem", fontWeight: 700, cursor: "default", opacity: 0.5 }}
-                  >{s.label}</span>
+                  <a key={s.label} href={s.href} title={s.title} target="_blank" rel="noopener noreferrer"
+                    style={{ width: "34px", height: "34px", background: "rgba(255,255,255,0.08)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.65)", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", textDecoration: "none", transition: "background 0.15s, color 0.15s" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.18)"; (e.currentTarget as HTMLAnchorElement).style.color = "white"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.65)"; }}
+                  >{s.label}</a>
                 ))}
+              </div>
+              {/* Pricing card */}
+              <div style={{ marginTop: "1.75rem", padding: "1rem", background: "rgba(199,25,26,0.12)", borderRadius: "var(--radius)", border: "1px solid rgba(199,25,26,0.2)" }}>
+                <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", marginBottom: "0.25rem" }}>First month only</div>
+                <div style={{ fontWeight: 800, color: "white", fontSize: "1.375rem" }}>$29.90</div>
+                <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>then $49.90/month</div>
+                <Link href="/join" className="btn-red" style={{ marginTop: "0.75rem", display: "block", textAlign: "center", fontSize: "0.8125rem", padding: "0.5rem 1rem" }}>
+                  Join Now
+                </Link>
               </div>
             </div>
 
@@ -111,14 +122,6 @@ export default function Footer() {
               {t.footer.contractorLinks.map(item => (
                 <Link key={item.href} href={item.href} className="footer-link">{item.label}</Link>
               ))}
-              <div style={{ marginTop: "1.5rem", padding: "1rem", background: "rgba(199,25,26,0.12)", borderRadius: "var(--radius)", border: "1px solid rgba(199,25,26,0.2)" }}>
-                <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)", marginBottom: "0.25rem" }}>First month only</div>
-                <div style={{ fontWeight: 800, color: "white", fontSize: "1.375rem" }}>$29.90</div>
-                <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>then $49.90/month</div>
-                <Link href="/join" className="btn-red" style={{ marginTop: "0.75rem", display: "block", textAlign: "center", fontSize: "0.8125rem", padding: "0.5rem 1rem" }}>
-                  Join Now
-                </Link>
-              </div>
             </div>
           </div>
 

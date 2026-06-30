@@ -9,6 +9,11 @@ const ALLOWED_KEYS = [
   "coupons",
   "notifications",
   "email_templates",
+  "blog_posts",
+  "faq_items",
+  "categories_override",
+  "crm_contacts",
+  "crm_interactions",
 ];
 
 export async function GET(request: Request) {

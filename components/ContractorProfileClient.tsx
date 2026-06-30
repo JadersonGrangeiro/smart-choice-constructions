@@ -115,6 +115,73 @@ function MapEmbed({ location }: { location: string }) {
   );
 }
 
+const CATEGORY_COVER: Record<string, string> = {
+  "General Contractor":    "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=80",
+  "Roofing":               "https://images.unsplash.com/photo-1599427303058-f04cbcf4756f?w=1200&q=80",
+  "Electrician":           "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=1200&q=80",
+  "HVAC":                  "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=1200&q=80",
+  "Plumber":               "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=80",
+  "Landscaping":           "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=1200&q=80",
+  "Kitchen Remodeling":    "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&q=80",
+  "Bathroom Remodeling":   "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1200&q=80",
+  "Carpenter":             "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=80",
+  "Painter":               "https://images.unsplash.com/photo-1565538810643-b5bdb0358c08?w=1200&q=80",
+};
+
+const CONTRACTOR_AVATARS: Record<string, string> = {
+  "f00ed9b9-ece2-4a19-9818-9663a600450a": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&q=80",
+  "a645986a-37bc-4ea4-8e3f-ae813dc064d1": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&q=80",
+  "ef870dcc-b8ef-4299-bc59-3a19c6923242": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&q=80",
+};
+
+const CATEGORY_PORTFOLIO: Record<string, Array<{ src: string; alt: string; caption: string }>> = {
+  "General Contractor": [
+    { src: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80", alt: "Kitchen renovation", caption: "Full kitchen renovation — Austin, TX" },
+    { src: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&q=80", alt: "Master bathroom remodel", caption: "Master bathroom remodel" },
+    { src: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80", alt: "Home exterior", caption: "Full exterior renovation with new siding" },
+    { src: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&q=80", alt: "New build exterior", caption: "Custom home — new construction" },
+    { src: "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80", alt: "Kitchen with island", caption: "Kitchen remodel with custom island" },
+    { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", alt: "Construction crew", caption: "Commercial addition — on-time delivery" },
+  ],
+  "Roofing": [
+    { src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80", alt: "New roof — asphalt shingles", caption: "Full roof replacement — architectural shingles" },
+    { src: "https://images.unsplash.com/photo-1599427303058-f04cbcf4756f?w=800&q=80", alt: "Roofer at work", caption: "Storm damage repair — same-day response" },
+    { src: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&q=80", alt: "Completed roofing project", caption: "New construction roofing — custom home" },
+    { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", alt: "Roofing crew", caption: "Full crew — 8-person team, 2-day completion" },
+    { src: "https://images.unsplash.com/photo-1582582621959-48d27397dc69?w=800&q=80", alt: "Metal roof installation", caption: "Standing seam metal roof installation" },
+    { src: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80", alt: "Re-roof completed", caption: "Re-roof with upgraded ventilation system" },
+  ],
+  "Electrician": [
+    { src: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=800&q=80", alt: "Electrical panel upgrade", caption: "200-amp panel upgrade — permitted & inspected" },
+    { src: "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=800&q=80", alt: "EV charger installation", caption: "Level 2 EV charger installation — 48A" },
+    { src: "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=800&q=80", alt: "Electrical work in progress", caption: "Whole-home rewire — knob and tube removal" },
+    { src: "https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=800&q=80", alt: "Circuit breaker box", caption: "New subpanel — workshop addition" },
+    { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", alt: "Electrical crew", caption: "Commercial tenant improvement — 400A service" },
+    { src: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80", alt: "Smart home wiring", caption: "Smart home wiring — new construction" },
+  ],
+};
+
+const BEFORE_AFTER_PHOTOS: Record<string, Array<{ src: string; alt: string; label: string; caption: string }>> = {
+  "General Contractor": [
+    { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", alt: "Kitchen before renovation", label: "Before", caption: "Original kitchen — 1990s layout" },
+    { src: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80", alt: "Kitchen after renovation", label: "After",  caption: "Completed renovation — open concept" },
+    { src: "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=800&q=80", alt: "Bathroom before", label: "Before", caption: "Original bathroom — 1980s tile" },
+    { src: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&q=80", alt: "Bathroom after", label: "After",  caption: "Master bath renovation — custom tile" },
+  ],
+  "Roofing": [
+    { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", alt: "Old roof", label: "Before", caption: "25-year-old asphalt — curled and granule loss" },
+    { src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80", alt: "New roof installed", label: "After",  caption: "New 50-year architectural shingles" },
+    { src: "https://images.unsplash.com/photo-1599427303058-f04cbcf4756f?w=800&q=80", alt: "Storm-damaged roof", label: "Before", caption: "Hail damage — emergency inspection" },
+    { src: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&q=80", alt: "Repaired roof", label: "After",  caption: "Full replacement — 3-day job" },
+  ],
+  "Electrician": [
+    { src: "https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=800&q=80", alt: "Old fuse box", label: "Before", caption: "60-amp fuse box — fire hazard" },
+    { src: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=800&q=80", alt: "New panel", label: "After",  caption: "200-amp breaker panel — code compliant" },
+    { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", alt: "Basement before", label: "Before", caption: "Unfinished basement — no outlets" },
+    { src: "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=800&q=80", alt: "Basement wired", label: "After",  caption: "Finished basement + EV charger added" },
+  ],
+};
+
 /** Video embed — YouTube or Vimeo */
 function VideoEmbed({ platform, id, title }: { platform: "youtube" | "vimeo"; id: string; title: string }) {
   const [playing, setPlaying] = useState(false);
@@ -162,20 +229,20 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
     preferredSuppliers: [], monthlyStats: [],
   };
 
-  const portfolioImages = [
-    { src: "gradient:linear-gradient(135deg,#162E5E,#1c3875)", alt: "Completed project — kitchen",    caption: "Full kitchen renovation, Austin TX" },
-    { src: "gradient:linear-gradient(135deg,#1c3875,#243580)", alt: "Completed project — cabinetry",  caption: "Custom cabinetry installation" },
-    { src: "gradient:linear-gradient(135deg,#243580,#162E5E)", alt: "Completed project — deck",       caption: "Deck addition with composite decking" },
-    { src: "gradient:linear-gradient(135deg,#162E5E,#0d1f40)", alt: "Completed project — bathroom",   caption: "Master bathroom remodel" },
-    { src: "gradient:linear-gradient(135deg,#0d1f40,#162E5E)", alt: "Completed project — living room",caption: "Open floor plan conversion" },
-    { src: "gradient:linear-gradient(135deg,#1c3875,#162E5E)", alt: "Completed project — outdoor",    caption: "Outdoor kitchen build" },
+  const portfolioImages = CATEGORY_PORTFOLIO[c.category] ?? [
+    { src: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80", alt: "Project 1", caption: "Completed renovation project" },
+    { src: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&q=80", alt: "Project 2", caption: "Bathroom remodel" },
+    { src: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80", alt: "Project 3", caption: "Exterior improvement" },
+    { src: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&q=80", alt: "Project 4", caption: "Residential project" },
+    { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", alt: "Project 5", caption: "Commercial project" },
+    { src: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=80", alt: "Project 6", caption: "Outdoor improvement" },
   ];
 
-  const beforeAfterImages = [
-    { src: "gradient:linear-gradient(135deg,#6b7280,#374151)", alt: "Kitchen before", label: "Before", caption: "Original kitchen — 1990s layout" },
-    { src: "gradient:linear-gradient(135deg,#162E5E,#1c3875)", alt: "Kitchen after",  label: "After",  caption: "Completed renovation — open concept" },
-    { src: "gradient:linear-gradient(135deg,#78716c,#57534e)", alt: "Bathroom before",label: "Before", caption: "Original bathroom" },
-    { src: "gradient:linear-gradient(135deg,#1c3875,#243580)", alt: "Bathroom after", label: "After",  caption: "Master bath renovation" },
+  const beforeAfterImages = BEFORE_AFTER_PHOTOS[c.category] ?? [
+    { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", alt: "Before renovation", label: "Before", caption: "Original condition" },
+    { src: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80", alt: "After renovation",  label: "After",  caption: "Completed renovation" },
+    { src: "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=800&q=80", alt: "Before project", label: "Before", caption: "Before the project" },
+    { src: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&q=80", alt: "After project",  label: "After",  caption: "After completion" },
   ];
 
   const reviews = [
@@ -209,17 +276,25 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
     { key: "credentials",  label: "Credentials" },
   ] as const;
 
+  const coverPhoto = CATEGORY_COVER[c.category] ?? null;
+  const avatarPhoto = CONTRACTOR_AVATARS[c.id] ?? null;
+
   return (
     <div style={{ paddingTop: "76px" }}>
       {/* ── Cover image ── */}
       <div style={{
         height: "280px",
-        background: "linear-gradient(155deg, var(--navy-dark) 0%, var(--navy) 60%, #1c3875 100%)",
+        background: coverPhoto
+          ? `url(${coverPhoto}) center / cover no-repeat`
+          : "linear-gradient(155deg, var(--navy-dark) 0%, var(--navy) 60%, #1c3875 100%)",
         position: "relative", overflow: "hidden",
       }}>
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8rem", opacity: 0.08 }}>
-          {categoryData?.icon ?? "🏗️"}
-        </div>
+        {coverPhoto && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,20,45,0.25) 0%, rgba(10,20,45,0.65) 100%)" }} />}
+        {!coverPhoto && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8rem", opacity: 0.08 }}>
+            {categoryData?.icon ?? "🏗️"}
+          </div>
+        )}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "1rem 0", background: "linear-gradient(transparent, rgba(0,0,0,0.55))" }}>
           <div className="container">
             <nav aria-label="Breadcrumb" style={{ display: "flex", gap: "0.5rem", fontSize: "0.8125rem", color: "rgba(255,255,255,0.6)", flexWrap: "wrap" }}>
@@ -242,15 +317,18 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
             {/* Logo avatar */}
             <div style={{
               width: "84px", height: "84px",
-              background: "linear-gradient(135deg, var(--navy), #1c3875)",
+              background: avatarPhoto ? "transparent" : "linear-gradient(135deg, var(--navy), #1c3875)",
               borderRadius: "20px",
               display: "flex", alignItems: "center", justifyContent: "center",
               color: "white", fontWeight: 900, fontSize: "2.125rem",
               flexShrink: 0, border: "3px solid white",
               boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-              marginTop: "-42px",
+              marginTop: "-42px", overflow: "hidden",
             }}>
-              {c.name.charAt(0)}
+              {avatarPhoto
+                ? <img src={avatarPhoto} alt={c.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : c.name.charAt(0)
+              }
             </div>
 
             <div style={{ flex: 1, minWidth: 0, paddingTop: "0.25rem" }}>

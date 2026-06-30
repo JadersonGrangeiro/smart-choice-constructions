@@ -127,6 +127,23 @@ export default function Home() {
                   </div>
                 ))}
               </div>
+
+              {/* Pricing teaser */}
+              <div className="animate-fade-in delay-500" style={{ marginTop: "2rem" }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "1.25rem", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.13)", borderRadius: "var(--radius-lg)", padding: "1rem 1.375rem" }}>
+                  <div>
+                    <div style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.5)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "0.2rem" }}>For Contractors</div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "0.375rem" }}>
+                      <span style={{ fontSize: "1.625rem", fontWeight: 900, color: "white", lineHeight: 1 }}>$29.90</span>
+                      <span style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>/ first month</span>
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)", marginTop: "0.125rem" }}>then $49.90/mo · cancel anytime</div>
+                  </div>
+                  <Link href="/register" style={{ background: "white", color: "var(--navy)", fontWeight: 700, fontSize: "0.875rem", padding: "0.625rem 1.125rem", borderRadius: "var(--radius)", textDecoration: "none", flexShrink: 0, transition: "opacity 0.15s" }}>
+                    List Your Business →
+                  </Link>
+                </div>
+              </div>
             </div>
 
             {/* Right panel — real construction photo */}
@@ -134,8 +151,8 @@ export default function Home() {
               {/* Main photo */}
               <div style={{ position: "absolute", top: 0, left: "5%", right: 0, borderRadius: "var(--radius-2xl)", height: "370px", overflow: "hidden", boxShadow: "0 32px 64px rgba(0,0,0,0.35)" }}>
                 <img
-                  src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=900&q=80"
-                  alt="Professional construction team at work"
+                  src="https://images.unsplash.com/photo-1599427303058-f04cbcf4756f?w=900&q=80"
+                  alt="Professional roofer installing shingles on a residential roof"
                   style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
                 />
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 50%, rgba(10,20,45,0.7) 100%)" }} />

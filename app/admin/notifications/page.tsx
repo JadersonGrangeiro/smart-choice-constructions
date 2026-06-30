@@ -39,7 +39,12 @@ export default function NotificationsAdminPage() {
     try {
       const res = await fetch("/api/admin/platform-data?key=notifications");
       const json = await res.json();
-      if (json.value && Array.isArray(json.value)) setNotifs(json.value);
+      if (json.value && Array.isArray(json.value) && json.value.length > 0) {
+        setNotifs(json.value);
+      } else {
+        setNotifs(MOCK_NOTIFS);
+        fetch("/api/admin/platform-data", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "notifications", value: MOCK_NOTIFS }) }).catch(() => {});
+      }
     } catch {}
   }, []);
 

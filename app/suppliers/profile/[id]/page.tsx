@@ -4,6 +4,12 @@ import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/server";
 import { SUPPLIER_CATEGORIES, getSupplierCategoryById } from "@/lib/supplier-data";
 
+const SUPPLIER_STORE_PHOTO = "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&q=80";
+
+function getSupplierCoverPhoto(_catId: string | undefined, _catName: string | undefined): string {
+  return SUPPLIER_STORE_PHOTO;
+}
+
 export const dynamic = "force-dynamic";
 
 async function getSupplier(id: string) {
@@ -61,13 +67,24 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
     ...(brands.length > 0 ? [{ q: "What brands do you carry?", a: `Current brands include: ${brands.join(", ")}. Product availability may vary — contact us for current stock.` }] : []),
   ];
 
+  const coverPhoto = getSupplierCoverPhoto(cat?.id, cat?.name);
+
   return (
     <div style={{ paddingTop: "76px" }}>
       {/* Cover */}
-      <div style={{ height: "220px", background: `linear-gradient(155deg, ${cat?.color ?? "var(--navy-dark)"}, var(--navy))`, position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8rem", opacity: 0.1 }}>
-          {cat?.icon ?? "🏢"}
-        </div>
+      <div style={{
+        height: "220px",
+        background: coverPhoto
+          ? `url(${coverPhoto}) center / cover no-repeat`
+          : `linear-gradient(155deg, ${cat?.color ?? "var(--navy-dark)"}, var(--navy))`,
+        position: "relative", overflow: "hidden",
+      }}>
+        {coverPhoto && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,20,45,0.3) 0%, rgba(10,20,45,0.65) 100%)" }} />}
+        {!coverPhoto && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8rem", opacity: 0.1 }}>
+            {cat?.icon ?? "🏢"}
+          </div>
+        )}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "1rem 0", background: "linear-gradient(transparent, rgba(0,0,0,0.4))" }}>
           <div className="container">
             <nav aria-label="Breadcrumb" style={{ display: "flex", gap: "0.5rem", fontSize: "0.8125rem", color: "rgba(255,255,255,0.55)", flexWrap: "wrap" }}>
