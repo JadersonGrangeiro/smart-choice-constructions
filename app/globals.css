@@ -604,3 +604,111 @@ html { -webkit-text-size-adjust: 100%; }
   transition: top 0.2s;
 }
 .skip-link:focus { top: 0; }
+
+/* ─── Profile cover photo ─── */
+.profile-cover {
+  position: relative;
+  overflow: hidden;
+}
+@media (max-width: 640px) {
+  .profile-cover { height: 160px !important; }
+}
+
+/* ─── Profile sticky header inner row ─── */
+.profile-sticky-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+@media (max-width: 640px) {
+  .profile-sticky-row {
+    gap: 0.75rem;
+    align-items: center;
+  }
+  /* Contractor profile container padding (separate from supplier .profile-sticky-content) */
+  .profile-sticky-ctr { padding: 0.625rem 1rem !important; }
+  /* Supplier profile flex container padding */
+  .profile-sticky-content { padding: 0.625rem 1rem !important; }
+}
+
+/* ─── Profile sticky avatar: compact on mobile ─── */
+@media (max-width: 640px) {
+  .profile-sticky-avatar {
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 12px !important;
+    margin-top: -24px !important;
+    font-size: 1.25rem !important;
+    border-width: 2px !important;
+  }
+  .profile-sticky-name {
+    font-size: 1.0625rem !important;
+    letter-spacing: -0.01em !important;
+  }
+  /* Hide verbose info in header on mobile */
+  .profile-header-verbose { display: none !important; }
+  /* Hide CTA buttons in the sticky header; they appear in the bottom bar instead */
+  .profile-header-ctas { display: none !important; }
+}
+
+/* ─── Mobile floating CTA bar ─── */
+.mobile-cta-bar { display: none; }
+@media (max-width: 640px) {
+  .mobile-cta-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75rem 1rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem));
+    background: #ffffff;
+    border-top: 1px solid var(--gray-100);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+    z-index: 200;
+    gap: 0.625rem;
+  }
+  .mobile-cta-bar > a,
+  .mobile-cta-bar > button {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+  /* Extra bottom padding on pages that have the floating bar */
+  .page-with-mobile-cta { padding-bottom: 88px !important; }
+}
+
+/* ─── Team grid: 2 col → 1 col on narrow mobile ─── */
+@media (max-width: 560px) {
+  .team-grid-2col { grid-template-columns: 1fr !important; }
+}
+
+/* ─── Dashboard stat cards ─── */
+.dashboard-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 640px) {
+  .dashboard-stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ─── Search card: consistent compact padding on small phones ─── */
+@media (max-width: 400px) {
+  .search-result-card { padding: 1.125rem !important; }
+  .search-card-layout { gap: 0.75rem; }
+}
+
+/* ─── Modals: full-screen on very small devices ─── */
+@media (max-width: 480px) {
+  .modal-inner {
+    padding: 1.25rem !important;
+    border-radius: var(--radius-lg) !important;
+  }
+}
+
+/* ─── Sticky profile header tablet (641-768px): hide badges only ─── */
+@media (min-width: 641px) and (max-width: 900px) {
+  .profile-header-verbose-lg { display: none !important; }
+}

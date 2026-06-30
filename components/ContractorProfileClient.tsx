@@ -282,7 +282,7 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
   return (
     <div style={{ paddingTop: "76px" }}>
       {/* ── Cover image ── */}
-      <div style={{
+      <div className="profile-cover" style={{
         height: "280px",
         background: coverPhoto
           ? `url(${coverPhoto}) center / cover no-repeat`
@@ -312,10 +312,10 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
 
       {/* ── Sticky profile header ── */}
       <div style={{ background: "white", borderBottom: "1px solid var(--gray-100)", position: "sticky", top: "72px", zIndex: 50 }}>
-        <div className="container" style={{ padding: "1.25rem 1.5rem" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: "1.5rem", flexWrap: "wrap" }}>
+        <div className="container profile-sticky-ctr" style={{ padding: "1.25rem 1.5rem" }}>
+          <div className="profile-sticky-row">
             {/* Logo avatar */}
-            <div style={{
+            <div className="profile-sticky-avatar" style={{
               width: "84px", height: "84px",
               background: avatarPhoto ? "transparent" : "linear-gradient(135deg, var(--navy), #1c3875)",
               borderRadius: "20px",
@@ -333,10 +333,10 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
 
             <div style={{ flex: 1, minWidth: 0, paddingTop: "0.25rem" }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: "0.875rem", flexWrap: "wrap", marginBottom: "0.375rem" }}>
-                <h1 style={{ fontSize: "1.5rem", fontWeight: 900, color: "var(--navy)", letterSpacing: "-0.02em" }}>{c.company}</h1>
+                <h1 className="profile-sticky-name" style={{ fontSize: "1.5rem", fontWeight: 900, color: "var(--navy)", letterSpacing: "-0.02em" }}>{c.company}</h1>
                 {earnedBadges.includes("featured") && <BadgeChip badgeId="featured" size="sm" />}
               </div>
-              <div style={{ fontSize: "0.875rem", color: "var(--gray-500)", marginBottom: "0.625rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              <div className="profile-header-verbose" style={{ fontSize: "0.875rem", color: "var(--gray-500)", marginBottom: "0.625rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                 <span>{c.name}</span>
                 <span style={{ color: "var(--gray-300)" }}>·</span>
                 <span>{c.category}</span>
@@ -349,7 +349,7 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
                   </>
                 )}
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+              <div className="profile-header-verbose" style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <Stars rating={c.rating} />
                   <span style={{ fontWeight: 800, color: "var(--navy)" }}>{c.rating}</span>
@@ -364,13 +364,13 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
                 </span>
               </div>
               {earnedBadges.length > 0 && (
-                <div style={{ marginTop: "0.75rem" }}>
+                <div className="profile-header-verbose" style={{ marginTop: "0.75rem" }}>
                   <BadgeGrid badgeIds={earnedBadges} size="sm" maxShow={5} />
                 </div>
               )}
             </div>
 
-            <div className="profile-sticky-actions">
+            <div className="profile-sticky-actions profile-header-ctas">
               <Link href={`/request-quote?contractor=${c.id}`} className="btn-red" style={{ padding: "0.75rem 1.5rem" }}>
                 Get Free Quote
               </Link>
@@ -400,7 +400,7 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
       </div>
 
       {/* ── Main content ── */}
-      <div className="container" style={{ padding: "2.5rem 1.5rem" }}>
+      <div className="container page-with-mobile-cta" style={{ padding: "2.5rem 1.5rem" }}>
         <div className="profile-body-grid profile-body-grid-2-1">
 
           {/* ══ Left column ══ */}
@@ -623,7 +623,7 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
                       Team information not yet added.
                     </div>
                   ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+                    <div className="team-grid-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
                       {ext.team.map((member, i) => (
                         <div key={i} style={{ display: "flex", gap: "1.125rem", padding: "1.5rem", background: "var(--gray-50)", borderRadius: "var(--radius-lg)", border: "1.5px solid var(--gray-150)" }}>
                           <div style={{ width: "52px", height: "52px", background: "var(--navy)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800, fontSize: "1.25rem", flexShrink: 0 }}>
@@ -840,6 +840,16 @@ export default function ContractorProfileClient({ contractor: c, earnedBadges, r
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Mobile floating CTA bar — hidden on desktop via CSS */}
+      <div className="mobile-cta-bar">
+        <Link href={`/request-quote?contractor=${c.id}`} className="btn-red" style={{ textAlign: "center" }}>
+          Get Free Quote
+        </Link>
+        <a href={`tel:${c.phone}`} className="btn-secondary" style={{ textAlign: "center" }}>
+          📞 Call
+        </a>
       </div>
 
       <style>{`

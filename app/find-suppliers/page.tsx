@@ -137,7 +137,7 @@ function FindSuppliersContent() {
                   const cat      = SUPPLIER_CATEGORIES.find(c => c.name === s.category);
                   const location = [s.city, s.state_code].filter(Boolean).join(", ");
                   return (
-                    <div key={s.id} className="card" style={{ padding: "1.5rem" }}>
+                    <div key={s.id} className="card search-result-card" style={{ padding: "1.5rem" }}>
                       <div className="search-card-layout">
                         <div style={{ width: "56px", height: "56px", background: `${cat?.color ?? "var(--navy)"}18`, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
                           {cat?.icon ?? "🏢"}

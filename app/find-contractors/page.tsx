@@ -56,7 +56,7 @@ function ContractorCard({ c }: { c: Contractor }) {
     : "within 24h";
 
   return (
-    <div className="card" style={{ padding: "1.5rem" }}>
+    <div className="card search-result-card" style={{ padding: "1.5rem" }}>
       <div className="search-card-layout">
         <div style={{
           width: "58px", height: "58px",

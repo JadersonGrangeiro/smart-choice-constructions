@@ -84,7 +84,7 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
   return (
     <div style={{ paddingTop: "76px" }}>
       {/* Cover */}
-      <div style={{
+      <div className="profile-cover" style={{
         height: "220px",
         background: coverPhoto
           ? `url(${coverPhoto}) center / cover no-repeat`
@@ -134,14 +134,20 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
               </div>
             )}
           </div>
-          <div className="profile-sticky-actions">
+          <div className="profile-sticky-actions profile-header-ctas">
             {s.phone && <a href={`tel:${s.phone}`} className="btn-red" style={{ padding: "0.75rem 1.5rem" }}>📞 Call</a>}
             {s.email && <a href={`mailto:${s.email}`} className="btn-secondary" style={{ padding: "0.75rem 1.5rem" }}>Email</a>}
           </div>
         </div>
       </div>
 
-      <div className="container" style={{ padding: "2.5rem 1.5rem" }}>
+      {/* Mobile floating CTA bar */}
+      <div className="mobile-cta-bar">
+        {s.phone && <a href={`tel:${s.phone}`} className="btn-red" style={{ textAlign: "center" }}>📞 Call</a>}
+        {s.email && <a href={`mailto:${s.email}`} className="btn-secondary" style={{ textAlign: "center" }}>Email</a>}
+      </div>
+
+      <div className="container page-with-mobile-cta" style={{ padding: "2.5rem 1.5rem" }}>
         <div className="profile-body-grid profile-body-grid-2-1">
           {/* Main content */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
